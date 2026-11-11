@@ -1,0 +1,31 @@
+{
+  "status": "PASS",
+  "points": [
+    {
+      "n": 65536,
+      "bits": 1747,
+      "limbs": 55,
+      "prime_count": 114,
+      "padded_inner": 480,
+      "byte_output_columns": 385,
+      "coefficient_fixtures_checked": 18,
+      "largest_dot": 7423389,
+      "largest_folds": 2
+    },
+    {
+      "n": 32768,
+      "bits": 868,
+      "limbs": 28,
+      "prime_count": 57,
+      "padded_inner": 256,
+      "byte_output_columns": 196,
+      "coefficient_fixtures_checked": 18,
+      "largest_dot": 3824979,
+      "largest_folds": 2
+    }
+  ],
+  "evidence": "CPU byte-matrix, centered-CRT and carry/reduction model",
+  "cuda_compiled": false,
+  "target_gpu_runs": 0,
+  "full_official_convolutions": 0
+}
