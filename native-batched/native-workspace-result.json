@@ -1,0 +1,32 @@
+{
+  "source": "faa2253a2453dc1bc3c7847face74d0431261c23",
+  "job": "6af4f2409d7744dd17c772a6",
+  "snapshot": "6af4f23f9d7744dd17c7728c",
+  "run": "6af4f4489d7744dd17c7885f",
+  "finished_at": "2026-11-11T23:05:16.454Z",
+  "cases": 2,
+  "passed": 2,
+  "B1_ms": 1.373258,
+  "B128_ms": 91.99578799999999,
+  "native_reduction_percent": -3.327200583205414,
+  "native_5_percent_gate_passed": false,
+  "current_fastest_official_ms": 71.826925,
+  "below_current_fastest": false,
+  "native_fresh_seeds_per_point": 1,
+  "all_coefficients_verified": true,
+  "target": "6aa6690fd4413d278e91947e",
+  "image": "fherma/cupqc@sha256:17b7ae721d6effe968f4c2ccf3876cde7a3a77df1eb3f28a1f41ea643a6fa802",
+  "B128_process_memory_mb": 9176.9,
+  "B128_GPU_metric_mb": 1323,
+  "target_l2_cache_bytes": 134217728,
+  "B128_first_warmup_us": {
+    "whole": 89528.328,
+    "pack": 49772.982,
+    "owned": 14436.718,
+    "H2D_span": 87166.626,
+    "compute_span": 88557.152,
+    "D2H_span": 87898.621
+  },
+  "formal_followup": "stopped at native 5 percent improvement gate; zero official measurements",
+  "scope": "One fresh native seed per point, distinct unscored warmup, exact B1/B128, single-compute shared memory method"
+}

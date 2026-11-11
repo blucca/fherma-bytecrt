@@ -1,5 +1,4 @@
 // SPDX-License-Identifier: Apache-2.0
-#include <algorithm>
 #include <malloc.h>
 #include <climits>
 
@@ -48,40 +47,6 @@ void retire_product_streams(State& s) {
     s.profile_products = 0;
 }
 
-// One compute FIFO serializes every product through CRT. Only its workspace
-// and Point-derived tables are shared; the H2D/D2H arrays stay slot-private.
-// The existing inventory remains the sole owner list, including on teardown.
-template<class T>
-void borrow_device_allocation(State& s, T*& pointer, T* owner) {
-    const auto owned = std::find(s.allocations.begin(), s.allocations.end(), pointer);
-    if (owned == s.allocations.end())
-        throw std::runtime_error("ByteCRT shared allocation missing from owner inventory");
-    check(cudaFree(pointer), "release replicated compute allocation");
-    s.allocations.erase(owned);
-    pointer = owner;
-}
-
-void share_compute_storage(State& s, const State& owner) {
-    borrow_device_allocation(s, s.tw, owner.tw);
-    borrow_device_allocation(s, s.inv_tw, owner.inv_tw);
-    borrow_device_allocation(s, s.psi, owner.psi);
-    borrow_device_allocation(s, s.untwist_crt, owner.untwist_crt);
-    borrow_device_allocation(s, s.encode_b, owner.encode_b);
-    borrow_device_allocation(s, s.encode_mu, owner.encode_mu);
-    borrow_device_allocation(s, s.q, owner.q);
-    borrow_device_allocation(s, s.primes, owner.primes);
-    borrow_device_allocation(s, s.n_inverse, owner.n_inverse);
-    borrow_device_allocation(s, s.b_matrix, owner.b_matrix);
-    borrow_device_allocation(s, s.invp, owner.invp);
-    borrow_device_allocation(s, s.constants, owner.constants);
-    borrow_device_allocation(s, s.ab, owner.ab);
-    borrow_device_allocation(s, s.ab_t, owner.ab_t);
-    borrow_device_allocation(s, s.c, owner.c);
-    borrow_device_allocation(s, s.weighted, owner.weighted);
-    // This borrowed State now owns only its independent device inputs/out.
-    assert(s.allocations.size() == 2);
-}
-
 void batch_mark(BatchState& batch, bool profile, BatchStream which, unsigned end) {
     if (profile)
         check(cudaEventRecord(batch.coverage[which][end], batch.streams[which]),
@@ -96,25 +61,26 @@ void batch_enqueue_operand(BatchState& batch, State& s, unsigned product,
     constexpr size_t first = cupqc::fwd_stage_1_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     const size_t coeffs = size_t(s.plan.n) * s.plan.l;
     const size_t planes = size_t(s.plan.n) * s.plan.pcount;
+    const size_t words = size_t(kInputCoefficients) * s.plan.l;
     const unsigned chunks = s.plan.n / kInputCoefficients;
     const auto input = batch.streams[kH2D];
     const auto compute = batch.streams[kCompute];
 
-    // This encode waits for the complete operand. Pack/copy it in one unit
-    // to reduce CPU fork/join and DMA submissions; the other products overlap.
-    const size_t offset = operand * coeffs;
-    const auto begin = profile ? Clock::now() : Clock::time_point{};
-    bytecrt_pack_operand(s.hostinput + offset, source, coeffs);
-    if (profile)
-        host.pack_us += std::chrono::duration<double, std::micro>(Clock::now() - begin).count();
-    if (product == 0 && operand == 0)
-        batch_mark(batch, profile, kH2D, 0);
-    check(cudaMemcpyAsync(s.inputs + offset, s.hostinput + offset,
-                          coeffs * sizeof(uint32_t), cudaMemcpyHostToDevice, input),
-          "batch input operand");
+    for (unsigned chunk = 0; chunk < chunks; ++chunk) {
+        const size_t offset = operand * coeffs + chunk * words;
+        const auto begin = profile ? Clock::now() : Clock::time_point{};
+        bytecrt_pack_operand(s.hostinput + offset, source + chunk * words, words);
+        if (profile)
+            host.pack_us += std::chrono::duration<double, std::micro>(Clock::now() - begin).count();
+        if (product == 0 && operand == 0 && chunk == 0)
+            batch_mark(batch, profile, kH2D, 0);
+        check(cudaMemcpyAsync(s.inputs + offset, s.hostinput + offset,
+                              words * sizeof(uint32_t), cudaMemcpyHostToDevice, input),
+              "batch input chunk");
+    }
     if (product + 1 == batch.batch && operand == 1)
         batch_mark(batch, profile, kH2D, 1);
-    // The complete pinned operand is now queued. Full MT32 retains the
+    // Four disjoint pinned slices are now queued. Full MT32 regains the
     // original grid occupancy; cross-product overlap supplies throughput.
     const auto ready = s.input_ready[operand][chunks - 1];
     check(cudaEventRecord(ready, input), "batch operand ready");
@@ -176,15 +142,17 @@ void batch_enqueue_output(BatchState& batch, State& s, unsigned product, bool pr
 void batch_drain_slot(State& s, std::vector<uint32_t>& output,
                       bool profile, BatchHostProfile& host) {
     const unsigned chunks = s.plan.n / kOutputCoefficients;
-    const size_t words = size_t(s.plan.n) * s.plan.l;
-    check(cudaEventSynchronize(s.copied[chunks - 1]), "batch wait whole copied product");
-    const auto begin_time = profile ? Clock::now() : Clock::time_point{};
-    const uint32_t* begin = s.hostout;
-    output.insert(output.end(), begin, begin + words);
-    if (profile)
-        host.owned_us += std::chrono::duration<double, std::micro>(Clock::now() - begin_time).count();
-    // The final D2H event completes this product's ancestors. The single owned
-    // copy barrier completes every byte before this staging slot is reused.
+    const size_t words = size_t(kOutputCoefficients) * s.plan.l;
+    for (unsigned chunk = 0; chunk < chunks; ++chunk) {
+        check(cudaEventSynchronize(s.copied[chunk]), "batch wait copied chunk");
+        const auto begin_time = profile ? Clock::now() : Clock::time_point{};
+        const uint32_t* begin = s.hostout + chunk * words;
+        output.insert(output.end(), begin, begin + words);
+        if (profile)
+            host.owned_us += std::chrono::duration<double, std::micro>(Clock::now() - begin_time).count();
+    }
+    // Last copied completes all input/compute/D2H ancestors. The final insert
+    // barrier completes this slot's owned bytes before any staging reuse.
 }
 
 }  // namespace
@@ -208,10 +176,7 @@ void* fherma_init(const fherma::Point& p) {
     batch->slot_count = std::min(p.B, kBatchSlots);
     for (unsigned slot = 0; slot < batch->slot_count; ++slot) {
         batch->slots[slot].reset(static_cast<State*>(bytecrt_serial_init(p)));
-        if (p.B > 1) {
-            retire_product_streams(*batch->slots[slot]);
-            if (slot) share_compute_storage(*batch->slots[slot], *batch->slots[0]);
-        }
+        if (p.B > 1) retire_product_streams(*batch->slots[slot]);
     }
     if (p.B > 1) {
         for (unsigned stream = 0; stream < batch->streams.size(); ++stream) {
@@ -222,12 +187,12 @@ void* fherma_init(const fherma::Point& p) {
         }
         cudaDeviceProp props{};
         check(cudaGetDeviceProperties(&props, 0), "batch device properties");
-        // One Point/compute owner and four private DMA slots use ~474 MB
-        // explicit device storage +173.016 MB pinned staging. Serial run calls
-        // and this single compute FIFO are the workspace-sharing contract.
+        // Four existing States intentionally retain fixed-table copies:
+        // <=1.376 GB explicit device arrays +173.016 MB pinned staging.
+        // All depend only on Point. The returned 1.845 GB vector is timed.
         std::fprintf(stderr,
-            "ByteCRT batch setup B=%u slots=%u resource-streams=3 async-engines=%d fixed-tables=shared compute-workspace=shared dma-io=private l2-cache-bytes=%d\n",
-            p.B, batch->slot_count, props.asyncEngineCount, props.l2CacheSize);
+            "ByteCRT batch setup B=%u slots=%u resource-streams=3 async-engines=%d fixed-tables=replicated\n",
+            p.B, batch->slot_count, props.asyncEngineCount);
     }
     return batch.release();
 }

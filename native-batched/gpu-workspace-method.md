@@ -26,10 +26,17 @@ Setup also reports L2 capacity. The expected mechanism is a smaller stable-addre
 
 ## Reproduce the orchestration and ownership check
 
-From the repository root, choose a regenerable output directory:
+Use the immutable experiment source, then choose a regenerable output directory:
 
 ```sh
+git checkout batch-shared-compute-candidate
 python3 native-batched/gpu-workspace-check.py /path/to/workspace/temp/bytecrt-check
 ```
 
 Python standard library and `g++` suffice. The checker extracts the current production wrapper, helper, State and allocator, then compiles the scaled deferred-DMA harness. Its real mathematical kernels and target latency are covered by the separate native measurement.
+
+## Complete native terminal result
+
+The [immutable source result](native-workspace-result.json) passes B1/B128 exact: **1.373258 / 91.995788 ms**, one scored fresh seed each. B128 is **3.327% slower** than its bulk baseline; the predeclared 5% improvement gate fails and official follow-up stops. First unscored B128 warmup is **89.528 ms**, with host pack/owned sums **49.773 / 14.437 ms** and three overlapping queue spans **87.167 / 88.557 / 87.899 ms**.
+
+The device reports **134,217,728 bytes (128 MiB) L2**. Target GPU metric is **1323 MB** and process metric **9176.9 MB**. These peaks include setup/runtime allocations; the explicit array lifetime accounting above remains its own scope. Production source and API metadata are restored to qualified S1. Shared-memory source and checks stay fixed at `batch-shared-compute-candidate`.
