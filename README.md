@@ -4,12 +4,12 @@ An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
 ## Batched coefficient-to-coefficient throughput
 
-The new independent [batched artifact](native-batched/) handles **128 products at N=65,536, W=1,747** with four bounded product slots, separate H2D/compute/D2H queues and ordinary owned-output heap retention. Its first full target run passes **B1 and B128 exact**: **89.809 ms for B128**, versus **291.519 ms** for the self-contained serial baseline (**69.19% lower whole-call latency**). The native baseline/diagnostic each uses one fresh scored seed at its own batched specification, with one unscored warmup per point; the challenge's official three-seed measurement passed **3/3 exact**, median **89.648935 ms**, ranked **#3** at observation ([formal result](native-batched/native-official-s1-3seed-result.json)). All coefficient conversions, transfers, dependencies and the complete standard-owned result stay timed.
+The new independent [batched artifact](native-batched/) handles **128 products at N=65,536, W=1,747** with four bounded product slots, separate H2D/compute/D2H queues and ordinary owned-output heap retention. Its first full target run passes **B1 and B128 exact**: **89.809 ms for B128**, versus **291.519 ms** for the self-contained serial baseline (**69.19% lower whole-call latency**). The native baseline/diagnostic each uses one fresh scored seed at its own batched specification, with one unscored warmup per point; the challenge's official three-seed measurement passed **3/3 exact**, median **89.648935 ms**, ranked **#4** at the latest observation ([formal result](native-batched/native-official-s1-3seed-result.json)). All coefficient conversions, transfers, dependencies and the complete standard-owned result stay timed.
 
 - The official row is ranked and participation is submitted. The legacy qualifying-runs query still applies 20 seeds and both old-spec points; the result preserves that mismatch, and it has been reported to FHERMA.
 - [B0 serial native result](native-batched/native-b0p-result.json) · [four-slot native result](native-batched/native-s1p-result.json)
 - Measured streaming source: [`aca09d6`](https://github.com/blucca/fherma-bytecrt/tree/aca09d65fe30e6c9497f7a0f038e9a9f4b7384df/native-batched); serial source: [`35d3956`](https://github.com/blucca/fherma-bytecrt/tree/35d3956b71f213aea8d1b5cd4281a8ec9f0952e2/native-batched)
-- [Whole-operand and whole-owned-product service](native-batched/host-bulk-method.md) — current complete native candidate, source and results are measured separately.
+- [Whole-operand and whole-owned-product service](native-batched/host-bulk-method.md) — exact native output, 0.03937% whole reduction: the 5% gate stops this formula. Selected S1 remains qualified.
 - [Non-temporal host traffic: paired CPU gate and full owned-output check](native-batched/host-copy-cpu.md) — NT passes exact native output; its 0.824% whole-call reduction stops at the 5% gate. The official S1 baseline is pinned separately.
 - [Why large owned outputs need a separate allocation measurement](native-batched/owned-output-cpu.md) · [real generated-harness lifecycle check](native-batched/harness-heap-cpu.md)
 
@@ -180,3 +180,7 @@ C19 combines the coalesced first-stage canonical-to-Montgomery conversion and ne
 ## Official C18 twenty-seed result
 
 [Official C18](native-smoke/native-official-c18-result.json) links measured source `40226d62e530f456c76531f458be5f676c45e554` to run `6af4830cbc2d9123ab3c0246`: 40/40 exact, 20/20 fresh seeds at each full point, verify=true, debug=false, unjudged=0. Complete-call min/median/max are **1.499398 / 1.674401 / 1.714724 ms** for N65536-W1747 and **0.507372 / 0.5215315 / 0.540510 ms** for N32768-W868. The median improves **0.93% / 0.70%** from the earlier official C16 measurements at the same twenty-seed scope. The prior three-seed C18 diagnostic remains separately recorded at 1.560 ms / 0.533 ms. Qualification and both official points reference the same measured source and run; rank is #19.
+
+### Batched eligibility update
+
+FHERMA support confirmed the ranked S1 three-seed result is the intended qualifying entry and fixed both the dialog and per-spec query. The live query now selects B128 at three seeds and returns `qualifies:true` / `already_entered:true` for the original S1 run. [Verification](native-batched/qualification-fixed-result.json).

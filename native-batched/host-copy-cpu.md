@@ -48,3 +48,5 @@ The source [`413497c`](https://github.com/blucca/fherma-bytecrt/tree/413497c8b00
 The first unscored B128 warmup reports pack **67.732 ms**, owned **21.543 ms**, whole **100.367 ms**. The earlier S1 first warmup reports 58.295/28.639/104.421 ms respectively. These are separate actual target runs; the CPU paired dataset above retains its two-worker ordinary-buffer scope. Target locality reports the full permitted CPU list 0–23 local to the GPU, PCIe 32 GT/s ×16, and two asynchronous transfer engines.
 
 The next complete method evaluates service granularity: full 14.4 MB operand packing/H2D and one standard-owned product insert, with the existing four-slot arithmetic and four-chunk CRT/D2H retained. The official three-seed S1 result remains 89.648935 ms at its pinned source.
+
+The production NT integration check uses the immutable `batch-nt-host-candidate` tag; main retains the selected qualified S1 backend after the native whole gate stops. The CPU paired protocol remains standalone.

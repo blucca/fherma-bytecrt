@@ -1,0 +1,25 @@
+{
+  "source": "be3f7af3c57a35d949fdd168ac37109e44088713",
+  "job": "6af4e1ee9d7744dd17c6c5c1",
+  "snapshot": "6af4e1ee9d7744dd17c6c5a7",
+  "run": "6af4e21d9d7744dd17c6c6ce",
+  "finished_at": "2026-11-11T21:47:49.854Z",
+  "cases": 2,
+  "passed": 2,
+  "B1_ms": 1.660239,
+  "B128_ms": 89.033466,
+  "native_reduction_percent": 0.039371929036124964,
+  "native_5_percent_gate_passed": false,
+  "current_fastest_official_ms": 74.668181,
+  "below_current_fastest": false,
+  "native_fresh_seeds_per_point": 1,
+  "unscored_first_warmup": {
+    "whole_ms": 89.317445,
+    "pack_ms": 50.654974,
+    "owned_ms": 14.358288,
+    "H2D_coverage_ms": 87.03997,
+    "compute_coverage_ms": 88.253761,
+    "D2H_coverage_ms": 87.54892699999999
+  },
+  "status": "exact_native_whole_gate_failed_formal_not_dispatched"
+}

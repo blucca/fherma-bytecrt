@@ -1,0 +1,17 @@
+{
+  "source": "aca09d65fe30e6c9497f7a0f038e9a9f4b7384df",
+  "run": "6af4cb3af4947a18ebdc3cec",
+  "qualifies": true,
+  "already_entered": true,
+  "conditions": {
+    "points": [
+      "b128-n65536-w1747"
+    ],
+    "seeds": 3,
+    "point_rule": "any"
+  },
+  "median_ms": 89.648935,
+  "official_rank_at_observation": 4,
+  "fastest_official_ms_at_observation": 71.826925,
+  "support_confirmed_intended_entry": true
+}
