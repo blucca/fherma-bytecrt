@@ -16,6 +16,10 @@ Setup prints the device's asynchronous copy engine count. One unscored warmup re
 
 The independent original implementation and its frozen `official-c18-20seed` source/result remain in place. Original single-product measurements and new batched measurements have their own specification and seeded data.
 
+## Large-output allocation
+
+B>1 setup retains the ordinary glibc heap for allocations below `INT_MAX` and disables automatic trimming. This addresses the full standard output vector's repeated first-touch page allocation; all vector ownership and ordered construction remain unchanged. A [CPU-only full-size experiment](owned-output-cpu.md) measured 450,560 faults in every default fresh 1.845 GB output and zero faults after warmup with retained heap. Complete target latency and peak memory are the next native gates.
+
 ## Build
 
 Build from this directory with the official `fherma/cupqc` image (cuPQC 0.6.0, CUDA 12.8). The CMake target shares the original mathematical sources in `../native-smoke`. `main.cpp` and `fherma.h` are generated from the published batched signature; the platform replaces these with the same generated contract at measurement.

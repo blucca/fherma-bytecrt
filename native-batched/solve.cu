@@ -1,4 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
+#include <malloc.h>
+#include <climits>
+
 // Reuse the exact C18 kernels and preserve its B=1 coefficient-to-coefficient path.
 #define BYTECRT_BATCHED
 #define fherma_init bytecrt_serial_init
@@ -159,6 +162,15 @@ void* fherma_init(const fherma::Point& p) {
         throw std::runtime_error("ByteCRT batch coverage B=1..128");
     if (p.B > 1 && (p.N != 65536 || p.W != 1747))
         throw std::runtime_error("ByteCRT streaming point N65536/W1747");
+    if (p.B > 1) {
+        // A 1.845 GB result otherwise gets a fresh mmap and ~450k first-touch
+        // faults every call. This fixed-point process retains its ordinary
+        // malloc heap pages; vector ownership/free semantics stay unchanged.
+        // B<=128 at this point keeps result bytes below INT_MAX. Native peak
+        // memory is checked against the spec's 32 GB limit.
+        if (!mallopt(M_MMAP_THRESHOLD, INT_MAX) || !mallopt(M_TRIM_THRESHOLD, -1))
+            throw std::runtime_error("ByteCRT batched heap policy rejected");
+    }
     auto batch = std::make_unique<BatchState>();
     batch->batch = p.B;
     batch->slot_count = std::min(p.B, kBatchSlots);
