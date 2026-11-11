@@ -117,4 +117,9 @@ GPU chunk profiles report CUDA-event elapsed spans. Each H2D pair spans its star
 
 [C19](native-c19-result.json), source `5d9b454ecd2c2645dc9f1d35e1b5d7561e636afe`, passes both full outputs at 3/3 fresh seeds plus two warm-ups. Primary whole-call min/median/max are **1.538015 / 1.621233 / 1.668628 ms**; auxiliary **0.518962 / 0.527507 / 0.532851 ms**. The primary median rises 3.91% from C18; auxiliary improves 1.07%. Primary warm2 B-forward changes from 77.376 to 75.328 µs, while A/B host packing totals 732.390 µs and H2D event coverage 1164.896 µs. The local forward effect and complete-call result retain these separate scopes.
 
-The main-point whole-call gate stops C19 production. Current source restores byte-for-byte to the native C18 complete input/NTT/CRT/output code. The pure ψR² CPU proof and negative native result remain available as historical evidence. Best C18 source next receives the full official twenty-seed update.
+The main-point whole-call gate stops C19 production. Current source restores byte-for-byte to the native C18 complete input/NTT/CRT/output code. The pure ψR² CPU proof and negative native result remain available as historical evidence. Best C18 source receives the completed official twenty-seed update below.
+
+
+## Best C18 official twenty-seed completion
+
+[Official C18](native-official-c18-result.json) completes the same participation at measured source `40226d62e530f456c76531f458be5f676c45e554`, pinned by `official-c18-20seed`, run `6af4830cbc2d9123ab3c0246`. Both complete points pass 20/20 fresh seeds and two unscored warm-ups; total 40/40 exact, verify=true, debug=false, unjudged=0. Whole-call min/median/max: primary **1.499398 / 1.674401 / 1.714724 ms**, auxiliary **0.507372 / 0.5215315 / 0.540510 ms**. Live official rank is **#19**; the qualification and both official rows match this exact source/run/runner/image. Main/auxiliary twenty-seed medians improve 0.93%/0.70% from official C16; the original C18 three-seed diagnostic carries its own scope. Current production remains C18.

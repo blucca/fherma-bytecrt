@@ -1,0 +1,58 @@
+{
+  "expected_source": {
+    "kind": "repository",
+    "location": "https://github.com/blucca/fherma-bytecrt",
+    "digest": "40226d62e530f456c76531f458be5f676c45e554",
+    "path": "native-smoke"
+  },
+  "spec": {
+    "kernel": "polynomial-multiplication",
+    "slug": "negacyclic",
+    "version": "1.0.0",
+    "id": "6a87eee7dea7a7548ad4ece4"
+  },
+  "target": {
+    "runner": "6aa6690fd4413d278e91947e",
+    "image": "fherma/cupqc@sha256:17b7ae721d6effe968f4c2ccf3876cde7a3a77df1eb3f28a1f41ea643a6fa802"
+  },
+  "measurement": {
+    "id": "6af4830cbc2d9123ab3c0246",
+    "status": "finished",
+    "cases": 40,
+    "passed": 40,
+    "unjudged": 0,
+    "verify": true,
+    "debug": false,
+    "warmup_cases": 2,
+    "init_s": 0.524197725,
+    "finished_at": "2026-11-11T15:02:00.944Z",
+    "timing": "whole-call coefficient-to-coefficient seconds.median; two unscored warm-ups per point",
+    "points": [
+      {
+        "point": "N65536-W1747",
+        "seeds": 20,
+        "passed": 20,
+        "unjudged": 0,
+        "lost": 0,
+        "min_s": 0.001499398,
+        "median_s": 0.001674401,
+        "max_s": 0.001714724
+      },
+      {
+        "point": "N32768-W868",
+        "seeds": 20,
+        "passed": 20,
+        "unjudged": 0,
+        "lost": 0,
+        "min_s": 0.000507372,
+        "median_s": 0.0005215314999999999,
+        "max_s": 0.00054051
+      }
+    ]
+  },
+  "status": "PASS",
+  "challenge": "polynomial-multiplication-2025",
+  "official_rank": 19,
+  "qualifies": true,
+  "already_entered": true
+}
