@@ -1,0 +1,75 @@
+{
+  "status": "PASS",
+  "scope": "minimal CPU layout/identity proof; source-extracted C3 standard radix2 reference and exact Montgomery helper",
+  "gpu_executions": 0,
+  "product_files_changed": false,
+  "compiler": "g++",
+  "flags": [
+    "-std=c++17",
+    "-O3",
+    "-Wall",
+    "-Wextra",
+    "-Wpedantic"
+  ],
+  "geometries": [
+    {
+      "N": 65536,
+      "M": 256,
+      "K": 256,
+      "L": 55,
+      "P": 114,
+      "mma_blocks_per_operand": 4096,
+      "layout_indices_checked": 65536,
+      "pre_sdk_values_checked": 65536,
+      "natural_encoding_samples": 8,
+      "wide_load_warps_per_cta": 28,
+      "wide_load_split_warps": 12,
+      "extra_ab_t_bytes": 59768832,
+      "extra_ab_t_mib": 57
+    },
+    {
+      "N": 32768,
+      "M": 256,
+      "K": 128,
+      "L": 28,
+      "P": 57,
+      "mma_blocks_per_operand": 2048,
+      "layout_indices_checked": 32768,
+      "pre_sdk_values_checked": 32768,
+      "natural_encoding_samples": 8,
+      "wide_load_warps_per_cta": 16,
+      "wide_load_split_warps": 0,
+      "extra_ab_t_bytes": 14942208,
+      "extra_ab_t_mib": 14.25
+    }
+  ],
+  "halfwarp_store_words": 16,
+  "halfwarp_store_alignment_bytes": 64,
+  "first_ntt_load_words_per_full_warp": 32,
+  "first_ntt_load_sectors_32B_old": 32,
+  "first_ntt_load_sectors_32B_new": 4,
+  "tiny_negacyclic_assert": {
+    "N": 16,
+    "M": 4,
+    "scope": "coalesced layout + Mont twist + independent standard cyclic NTT + normalization + untwist vs exact schoolbook",
+    "all_coefficients": true
+  },
+  "reference_preservation": {
+    "forward_first": "byte-identical",
+    "launch_product": "byte-identical",
+    "make_encode_b": "byte-identical",
+    "encode_mma_reduce": "byte-identical",
+    "natural_launch_encode_mma": "byte-identical"
+  },
+  "patch": "temp/round536/coalesced/coalesced-first-ntt.patch",
+  "base_sources": {
+    "products/fherma-bytecrt/native-smoke/rns-encode-mma.cuh": "efb54d7d47c948734a9c99f28bad4c51a4fd53dba22935799c90fb6e9d3f050d",
+    "products/fherma-bytecrt/native-smoke/ntt-pipeline.cuh": "1902c9b699bd8ac8afc44add9ae7ecb07ee81a16da3672c7e75346722afd9d25",
+    "products/fherma-bytecrt/native-smoke/solve.cu": "bd0c620baf47771aa778fa42d66cf08749c3969df1911d352a93c7b037d129d7"
+  },
+  "staged_sources": {
+    "products/fherma-bytecrt/native-smoke/rns-encode-mma.cuh": "d38ee92dbac8852953e8bd0932181fcf2ca0164fef28adfc8475ddb0a5439140",
+    "products/fherma-bytecrt/native-smoke/ntt-pipeline.cuh": "af383f13c4743e0bcbdf18f78fef94fde938c3588cc36146ae150faf04fae4eb",
+    "products/fherma-bytecrt/native-smoke/solve.cu": "badb3d21816a966769502ed0f39bfcce30f866b85a138fe83c87a65775b0d70f"
+  }
+}

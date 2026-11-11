@@ -1,0 +1,140 @@
+{
+  "status": "PASS",
+  "source_commit": "2b19df7332ab5983fff6002d1eaad505807714a6",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "host_openmp": "4.5",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.003748251,
+        "median": 0.003796516,
+        "mean": 0.0037863673333333337,
+        "max": 0.003814335
+      },
+      "fresh_seeds": [
+        21,
+        69,
+        75
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.001215453,
+        "median": 0.001267335,
+        "mean": 0.001263666,
+        "max": 0.00130821
+      },
+      "fresh_seeds": [
+        43,
+        64,
+        80
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 393.504,
+            "forward1": 375.776,
+            "fused-middle": 101.248,
+            "inverse-weighted": 198.72,
+            "G1": 299.36,
+            "H2D": 626.08
+          },
+          "host_us": {
+            "input-pack": 1078.909,
+            "H2D+product": 2026.537,
+            "D2H": 267.763,
+            "output-construct": 3640.395
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 388.256,
+            "forward1": 371.712,
+            "fused-middle": 96.256,
+            "inverse-weighted": 194.56,
+            "G1": 294.944,
+            "H2D": 635.136
+          },
+          "host_us": {
+            "input-pack": 535.792,
+            "H2D+product": 2004.253,
+            "D2H": 263.799,
+            "output-construct": 1001.03
+          }
+        }
+      ]
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 129.632,
+            "forward1": 99.296,
+            "fused-middle": 28.576,
+            "inverse-weighted": 53.6,
+            "G1": 104.48,
+            "H2D": 262.944
+          },
+          "host_us": {
+            "input-pack": 646.462,
+            "H2D+product": 700.748,
+            "D2H": 127.682,
+            "output-construct": 862.399
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 119.68,
+            "forward1": 96.224,
+            "fused-middle": 24.576,
+            "inverse-weighted": 51.2,
+            "G1": 100.384,
+            "H2D": 219.104
+          },
+          "host_us": {
+            "input-pack": 252.513,
+            "H2D+product": 628.94,
+            "D2H": 83.183,
+            "output-construct": 230.135
+          }
+        }
+      ]
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T10:21:54.099Z",
+  "measurement_scope": "initial complete native diagnostic, three fresh measured seeds per point",
+  "changes": "exact unsigned-MMA RNS input encoder; fixed pinned input and OpenMP partition packing; one H2D transfer"
+}

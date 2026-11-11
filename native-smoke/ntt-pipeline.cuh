@@ -66,6 +66,33 @@ __global__ void forward_first(uint32_t* ab, const uint32_t* tw,
     f.stage_1_store(s, poly, blockIdx.x);
 }
 
+// Coalesced input alternative; retains the C3 natural forward_first above.
+// ab_t and psi_t use id*K+i; ab receives the SDK natural id+i*256 scatter.
+// ab_t and ab are disjoint: a natural scatter can overwrite another CTA's
+// unread transposed input when the two pointers alias.
+template<uint32_t N>
+__global__ void forward_first_coalesced(const uint32_t* ab_t, uint32_t* ab,
+                                        const uint32_t* tw, const uint32_t* psi_t,
+                                        const cupqc::nttConst<uint32_t>* constants,
+                                        uint32_t prime_count) {
+    static_assert(N == 65536 || N == 32768, "ByteCRT coalesced NTT geometries");
+    extern __shared__ uint32_t s[];
+    constexpr uint32_t K = N / kSubSize;
+    const uint32_t prime = blockIdx.y % prime_count;
+    const auto mc = constants[prime];
+    const auto* input = ab_t + size_t(blockIdx.y) * N + size_t(blockIdx.x) * K;
+    const auto* psi = psi_t + size_t(prime) * N + size_t(blockIdx.x) * K;
+    auto* poly = ab + size_t(blockIdx.y) * N;
+    Staged<N, cupqc::nttDirection::FORWARD> f;
+    for (uint32_t i = threadIdx.x; i < K; i += blockDim.x)
+        s[i] = bytecrt::mont_mul_word(f.to_mont(input[i], mc), psi[i], mc.p, mc.n_dash);
+    __syncthreads();
+    // grid.x=256 and blockIdx.x=id preserve the runtime SDK's stage-local id.
+    f.stage_1_execute(s, tw + size_t(prime) * N, mc.p);
+    __syncthreads();
+    f.stage_1_store(s, poly, blockIdx.x);
+}
+
 template<uint32_t N>
 __global__ void fused_middle(const uint32_t* ab, uint32_t* c,
                              const uint32_t* tw, const uint32_t* inv_tw,

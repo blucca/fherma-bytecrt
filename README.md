@@ -103,4 +103,8 @@ The current iteration replaces a runtime division in the forward twist with an e
 
 ## Tensor RNS input encoding
 
-[`rns-encode-mma.cuh`](native-smoke/rns-encode-mma.cuh) reuses each 16-coefficient byte tile across all primes. Seven unsigned byte-dot sums reconstruct the full ≤69-bit ordinary power-weighted sum. A fixed 64-bit Barrett reciprocal plus one Montgomery high-word product gives the exact canonical residue. The first native measurement follows; source-extracted CPU checks already match independent whole-coefficient Python modulo, including full-u32 words and tails. Input/output copies remain within the complete-call timer.
+[`rns-encode-mma.cuh`](native-smoke/rns-encode-mma.cuh) reuses each 16-coefficient byte tile across all primes. Seven unsigned byte-dot sums reconstruct the full ≤69-bit ordinary power-weighted sum. A fixed 64-bit Barrett reciprocal plus one Montgomery high-word product gives the exact canonical residue. The [C6 native run](native-smoke/native-c6-result.json) passes both full outputs at three fresh seeds per point, with complete-call medians 3.797 ms / 1.267 ms. Source-extracted CPU checks match independent whole-coefficient Python modulo, including full-u32 words and tails. Input/output copies remain within the complete-call timer.
+
+## Coalesced first NTT
+
+The next complete native method writes RNS inputs directly in staged `[prime][id][i]` order and loads the first NTT’s input/forward-twist powers contiguously. SDK stage-local ids, arithmetic and normal intermediate stores stay unchanged. Input and normal-intermediate buffers are disjoint, adding 57 / 14.25 MiB of GPU workspace. [CPU layout proof](native-smoke/coalesced-ntt-cpu-result.json) checks every index/shared-value identity at both sizes and a small independent full convolution. Native whole-call/exact measurement is the next gate.

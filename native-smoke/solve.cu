@@ -32,6 +32,7 @@ struct State {
     bytecrt::RnsPlan plan;
     uint32_t* inputs = nullptr;
     uint32_t* ab = nullptr;
+    uint32_t* ab_t = nullptr;  // disjoint transposed input for coalesced forward stage 1
     uint32_t* c = nullptr;
     uint32_t* tw = nullptr;
     uint32_t* inv_tw = nullptr;
@@ -108,11 +109,12 @@ void product(State& s, bool profile) {
     constexpr size_t middle = 2 * cupqc::fwd_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     constexpr size_t last = cupqc::inv_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     mark(s, profile, 0);
-    bytecrt::launch_encode_mma(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
-                                s.neg_inverses, s.powers_mont, s.encode_mu, s.ab);
+    bytecrt::launch_encode_mma_transposed(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
+                                           s.neg_inverses, s.powers_mont, s.encode_mu, s.ab_t);
     check(cudaGetLastError(), "coefficient RNS encoding");
     mark(s, profile, 1);
-    forward_first<N><<<dim3(kSubSize, 2 * P), kThreads, first>>>(s.ab, s.tw, s.psi, s.constants, P);
+    forward_first_coalesced<N><<<dim3(kSubSize, 2 * P), kThreads, first>>>(
+        s.ab_t, s.ab, s.tw, s.psi, s.constants, P);
     check(cudaGetLastError(), "forward first");
     mark(s, profile, 2);
     fused_middle<N><<<dim3(K, P), kThreads, middle>>>(s.ab, s.c, s.tw, s.inv_tw, s.constants, P);
@@ -138,6 +140,7 @@ void* fherma_init(const fherma::Point& p) {
     const size_t planes = size_t(p.N) * s->plan.pcount;
     allocate(*s, s->inputs, 2 * coeffs);
     allocate(*s, s->ab, 2 * planes);
+    allocate(*s, s->ab_t, 2 * planes);
     allocate(*s, s->c, planes);
     allocate(*s, s->tw, planes);
     allocate(*s, s->inv_tw, planes);
@@ -170,7 +173,10 @@ void* fherma_init(const fherma::Point& p) {
         const uint32_t inverse_step = bytecrt::rns_detail::pow_mod(s->plan.psi_roots[j], prime - 2, prime);
         for (uint32_t i = 0; i < p.N; ++i) {
             const size_t index = size_t(j) * p.N + i;
-            psi[index] = uint32_t(uint64_t(forward_power) * r_mod_p % prime); // Montgomery
+            const size_t psi_index = size_t(j) * p.N +
+                size_t(i % bytecrt::ntt::kSubSize) * (p.N / bytecrt::ntt::kSubSize) +
+                i / bytecrt::ntt::kSubSize;
+            psi[psi_index] = uint32_t(uint64_t(forward_power) * r_mod_p % prime); // transposed Montgomery
             untwist_crt[index] = inverse_power;
             forward_power = uint32_t(uint64_t(forward_power) * s->plan.psi_roots[j] % prime);
             inverse_power = uint32_t(uint64_t(inverse_power) * inverse_step % prime);

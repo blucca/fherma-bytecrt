@@ -80,7 +80,7 @@ __device__ __forceinline__ uint32_t encode_mma_reduce(
 // MT=16, NT=56, seven full warps: the register gather/scatter follows G1's
 // m16n8k32 unsigned-byte layout. Each CTA loads its input tile once, then
 // iterates over eight primes (seven byte-product digits each) per group.
-template <unsigned L, unsigned P, unsigned Kpad>
+template <unsigned L, unsigned P, unsigned Kpad, bool Transposed = false>
 __global__ void encode_mma16(unsigned N,
                             const uint32_t* __restrict__ inputs,
                             const uint8_t* __restrict__ b,
@@ -102,12 +102,17 @@ __global__ void encode_mma16(unsigned N,
     const unsigned lane = tid & 31, warp = tid >> 5;
     const unsigned g = lane >> 2, t = lane & 3;
     const unsigned k_lane = 4 * t;
-    const unsigned first_coefficient = blockIdx.x * MT;
+    // Transposed launch: blockIdx.x = tile*256 + id, row r selects
+    // coefficient id + (tile*16+r)*256; each row retains contiguous limbs.
+    constexpr unsigned transpose_m = 256;
+    const unsigned id = Transposed ? blockIdx.x % transpose_m : 0;
+    const unsigned first_row = (Transposed ? blockIdx.x / transpose_m : blockIdx.x) * MT;
     const unsigned operand = blockIdx.y;
     const std::size_t input_base = std::size_t{operand} * N * L;
     auto* shared_words = reinterpret_cast<uint32_t*>(shared_a);
     for (unsigned word = tid; word < MT * word_stride; word += threads) {
-        const unsigned coefficient = first_coefficient + word / word_stride;
+        const unsigned row = first_row + word / word_stride;
+        const unsigned coefficient = Transposed ? id + row * transpose_m : row;
         const unsigned limb = word % word_stride;
         shared_words[word] = coefficient < N && limb < L
             ? inputs[input_base + std::size_t{coefficient} * L + limb]
@@ -145,14 +150,16 @@ __global__ void encode_mma16(unsigned N,
 
         if (tid < 128) {
             const unsigned local_prime = tid / MT;
-            const unsigned coefficient = first_coefficient + tid % MT;
+            const unsigned row = first_row + tid % MT;
+            const unsigned coefficient = Transposed ? id + row * transpose_m : row;
             const unsigned prime = group * 8 + local_prime;
             if (coefficient < N && prime < P) {
                 const int32_t* sums = shared_c[tid % MT] + 7 * local_prime;
                 const uint32_t residue = detail::encode_mma_reduce(
                     sums, primes[prime], neg_inverses[prime],
                     powers_mont[std::size_t{prime} * L + 2], mu[prime]);
-                ab[(std::size_t{operand} * P + prime) * N + coefficient] = residue;
+                const unsigned destination = Transposed ? id * (N / transpose_m) + row : coefficient;
+                ab[(std::size_t{operand} * P + prime) * N + destination] = residue;
             }
         }
         // All 224 threads reach both group barriers, including tail lanes.
@@ -184,6 +191,29 @@ inline void launch_encode_mma(unsigned N, unsigned L, unsigned P,
             N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab);
     else
         throw std::runtime_error("ByteCRT tensor encoding requires (L,P)=(55,114) or (28,57)");
+}
+
+// Full-size staged-NTT input layout: ab_t[(operand*P+prime)*N+id*K+i],
+// K=N/256, i=tile*16+r, natural coefficient=id+i*256. Each half warp
+// stores 16 contiguous canonical words. Natural launch_encode_mma is retained.
+inline void launch_encode_mma_transposed(unsigned N, unsigned L, unsigned P,
+                                          const uint32_t* d_inputs,
+                                          const uint8_t* d_b,
+                                          const uint32_t* d_p,
+                                          const uint32_t* d_neg_inverse,
+                                          const uint32_t* d_powers_mont,
+                                          const uint64_t* d_mu,
+                                          uint32_t* d_ab_t,
+                                          cudaStream_t stream = nullptr) {
+    const dim3 grid(N / 16, 2);
+    if (N == 65536 && L == 55 && P == 114)
+        encode_mma16<55, 114, 224, true><<<grid, 224, 0, stream>>>(
+            N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab_t);
+    else if (N == 32768 && L == 28 && P == 57)
+        encode_mma16<28, 57, 128, true><<<grid, 224, 0, stream>>>(
+            N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab_t);
+    else
+        throw std::runtime_error("ByteCRT transposed tensor encoding requires full staged geometries");
 }
 
 }  // namespace bytecrt
