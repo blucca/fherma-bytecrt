@@ -34,11 +34,11 @@ endif()
 
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
-add_executable(solution main.cpp solve.cu ../native-smoke/io-copy.cpp ../native-smoke/vector-copy.cpp)
+add_executable(solution main.cpp solve.cu core/io-copy.cpp core/vector-copy.cpp)
 
 target_include_directories(solution PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
-  ${CMAKE_CURRENT_SOURCE_DIR}/../native-smoke
+  ${CMAKE_CURRENT_SOURCE_DIR}/core
   ${CUPQC_SDK_DIR}/include
   ${CUPQC_SDK_DIR}/include/cupqc)
 
