@@ -4,6 +4,7 @@
 
 #include <cuda_runtime.h>
 #include <cupqc/ntt.hpp>
+#include "rns-encode.cuh"
 
 #include <cstddef>
 #include <cstdint>
@@ -36,7 +37,7 @@ __global__ void mont_table(uint32_t* out, uint32_t p) {
 }
 
 // ab[(operand * prime_count + prime) * N + coefficient], operands A then B.
-// Tables are [prime][N]: tw/inv_tw in Montgomery form, psi/psi_inv ordinary.
+// Tables are [prime][N]: tw/inv_tw/psi in Montgomery form, psi_inv ordinary.
 // Prime contract: 2^30 < p < 2^31, p == 1 mod 2N, psi^N == p-1,
 // forward root = psi^2, inverse root = (psi^2)^-1, N_inv ordinary N^-1 mod p.
 template<uint32_t N>
@@ -55,8 +56,9 @@ __global__ void forward_first(uint32_t* ab, const uint32_t* tw,
     for (uint32_t i = threadIdx.x; i < K; i += blockDim.x) {
         // SDK forward stage 1: s[i] <- poly[id + i*M], strided.
         const uint32_t coefficient = blockIdx.x + i * kSubSize;
-        // An ordinary psi power times a Montgomery residue retains the domain.
-        s[i] = uint32_t(uint64_t(s[i]) * psi[size_t(prime) * N + coefficient] % mc.p);
+        // Both factors are Montgomery: the product retains that domain.
+        s[i] = bytecrt::mont_mul_word(s[i], psi[size_t(prime) * N + coefficient],
+                                       mc.p, mc.n_dash);
     }
     __syncthreads();
     f.stage_1_execute(s, tw + size_t(prime) * N, mc.p);

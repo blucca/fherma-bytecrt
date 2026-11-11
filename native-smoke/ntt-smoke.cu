@@ -196,7 +196,7 @@ void run_geometry() {
             ab[index] = a[i];
             ab[planes + index] = b[i];
             golden[index] = expected[i];
-            psi[index] = forward_power;
+            psi[index] = modmul(forward_power, r_mod_p, r.p);  // psi^i in Montgomery form
             psi_inv[index] = inverse_power;
             forward_power = modmul(forward_power, r.psi, r.p);
             inverse_power = modmul(inverse_power, r.psi_inv, r.p);

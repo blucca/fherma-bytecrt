@@ -1,0 +1,105 @@
+{
+  "status": "PASS",
+  "source_commit": "3e1498719603a57575b4718fa33cb7ef8374373d",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 1,
+      "seeds": 1,
+      "unjudged": 0,
+      "whole_call_seconds": {
+        "min": 0.006598407,
+        "median": 0.006598407,
+        "mean": 0.006598407,
+        "max": 0.006598407
+      },
+      "memory_mb": {
+        "min": 133.1,
+        "median": 133.1,
+        "max": 133.1
+      },
+      "seeds_measured": [
+        8
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 1,
+      "seeds": 1,
+      "unjudged": 0,
+      "whole_call_seconds": {
+        "min": 0.001892313,
+        "median": 0.001892313,
+        "mean": 0.001892313,
+        "max": 0.001892313
+      },
+      "memory_mb": {
+        "min": 60,
+        "median": 60,
+        "max": 60
+      },
+      "seeds_measured": [
+        6
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "GPU_first_warmup_us": {
+        "encode": 405.312,
+        "forward1": 375.392,
+        "fused-middle": 100.256,
+        "inverse-weighted": 198.848,
+        "G1": 299.328
+      },
+      "host_first_warmup_us": {
+        "H2D": 2415.48,
+        "product": 1397.497,
+        "output-allocate": 3214.8,
+        "D2H": 1485.485
+      }
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "GPU_first_warmup_us": {
+        "encode": 93.632,
+        "forward1": 100.32,
+        "fused-middle": 29.472,
+        "inverse-weighted": 52.448,
+        "G1": 104.48
+      },
+      "host_first_warmup_us": {
+        "H2D": 889.311,
+        "product": 399.89,
+        "output-allocate": 545.651,
+        "D2H": 618.655
+      }
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "full_coefficient_words_per_output": [
+    3604480,
+    917504
+  ],
+  "timing_boundary": "complete host coefficient input to complete host coefficient output",
+  "finished_at": "2026-11-11T09:49:14.474Z",
+  "measurement_scope": "initial two-point native diagnostic, one measured seed each"
+}

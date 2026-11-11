@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** actual RTX PRO 6000 Blackwell native unsigned MMA, full-width fused G1 CRT and both cuPQC staged NTT sizes pass their independent exact gates. The complete wide-coefficient RNS/NTT/weighted-CRT implementation is now in [`native-smoke/`](native-smoke/), ready for the first full two-point target measurement.
+**Current result:** actual RTX PRO 6000 Blackwell native unsigned MMA, full-width fused G1 CRT and both cuPQC staged NTT sizes pass their independent exact gates. The complete wide-coefficient RNS/NTT/weighted-CRT implementation passes both official-size native outputs in [`native-smoke/`](native-smoke/): an initial one-seed diagnostic measures 6.598 ms / 1.892 ms end-to-end. [Full native result](native-smoke/native-c4-result.json). Host transfers/output construction and the forward boundary are the current measured bottlenecks.
 
 ```sh
 python3 -B reference.py
@@ -89,8 +89,14 @@ A concrete native experiment is fixed pinned D2H staging plus range construction
 
 G1 passes all six fixed setup fixtures on the RTX PRO 6000 Blackwell Server GPU: 36 signed full-width coefficients plus 60 zero rows, 3,984 canonical output words checked. Both FHERMA widths are covered, with FP64 centered alpha, unsigned MMA, limb carry and near-power reduction; UINT32_MAX gap exercises products beyond 64 bits. [Native G1 result](native-smoke/native-c2-result.json).
 
-The complete polynomial pipeline now uses cuPQC staged RNS NTT, tiled wide-coefficient encoding and fused inverse/CRT-weighted packing. Its first whole-call native measurement is next.
+The complete polynomial pipeline now uses cuPQC staged RNS NTT, tiled wide-coefficient encoding and fused inverse/CRT-weighted packing. Its first whole-call native measurement passes both complete outputs; the next measured iteration uses pinned output staging and a Montgomery forward twist.
 
 ### Runtime-prime staged NTT gate
 
 [Native NTT integration](native-smoke/ntt-pipeline.cuh) uses cuPQC 0.6 M256/Block128 at both challenge sizes. A fused middle stage keeps both forward spectral tiles and the product in shared memory through the first inverse stage. [The fixed setup oracle](native-smoke/ntt-smoke.cu) compares all 196,608 residues at two real RNS primes against an independent CPU radix-2 product, whose small-size result is checked against schoolbook. Actual sm120 compilation/execution passes all 196,608 residues on the target. [C3 native result](native-smoke/native-c3-result.json). The G1 gate remains coefficient-level, and C3 covers RNS negacyclic convolution before complete wide-coefficient handoff. The SDK remains an external dependency.
+
+## Complete-call iteration
+
+The initial [C4 native run](native-smoke/native-c4-result.json) passes both complete polynomial outputs at the actual prime moduli, including all 3,604,480 / 917,504 output words. The single measured seeds cost 6.598 ms / 1.892 ms. The first warm-up separates GPU kernels from host transfers and output allocation; its phase values have that warm-up scope.
+
+The current iteration replaces a runtime division in the forward twist with an exact Montgomery product. It also uses fixed pinned D2H staging and direct output-vector range construction. Complete transfers, construction and arithmetic remain timed. The next native run judges exactness and whole-call effects together.

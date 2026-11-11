@@ -7,7 +7,7 @@ Complete coefficient-to-coefficient negacyclic multiplication at both FHERMA cha
 | 65,536 | 1,747 | 55 | 114 | 480 |
 | 32,768 | 868 | 28 | 57 | 256 |
 
-`solve.cu` prepares prime/root/Montgomery/CRT constants from the fixed point during setup. Every measured call copies the two complete coefficient inputs, encodes all limbs to RNS, performs cuPQC staged NTT multiplication, untwists and weights residues directly into coefficient-major ByteCRT storage, runs exact unsigned-MMA CRT with centered correction, and returns all canonical coefficient limbs. Input/output transfers and output construction remain inside the call.
+`solve.cu` prepares prime/root/Montgomery/CRT constants from the fixed point during setup. Every measured call copies the two complete coefficient inputs, encodes all limbs to RNS, performs cuPQC staged NTT multiplication with a Montgomery forward twist, untwists and weights residues directly into coefficient-major ByteCRT storage, runs exact unsigned-MMA CRT with centered correction, copies all canonical coefficient limbs to fixed pinned D2H staging, then constructs the complete returned vector directly from that range. Input/output transfers and output construction remain inside the call.
 
 ## Arithmetic
 
@@ -39,7 +39,7 @@ CMake links the external cuPQC 0.6 NTT static library with device LTO and native
 - [Fixed plan CPU](rns-plan-cpu-result.json): all prime/root/inverse/power words, FP64 reciprocals and B bytes agree with the independent Python model and original G1 fixtures at both widths/gap boundaries.
 - [Encoding CPU](rns-encode-cpu-result.json): source-extracted arithmetic/kernel agrees with independent Python BigInt modulo, including full-width words and coefficient/prime tails.
 
-C1–C3 diagnostic commits used the attributed upstream schoolbook for their small timed polynomial answer. The current full pipeline has its own two-point native exact/whole-call gate.
+C1–C3 diagnostic commits used the attributed upstream schoolbook for their small timed polynomial answer. The full pipeline passes [C4](native-c4-result.json) at both complete official-size outputs, one measured seed per point: 6.598 ms / 1.892 ms. This iteration now checks pinned-output and Montgomery-forward improvements in the next complete native run.
 
 `ntt-smoke.cu` supports standalone native oracle execution with `BYTECRT_NTT_SMOKE_STANDALONE`; `g1-smoke.cu`/`mma-smoke.cu` preserve earlier setup checks. These gates stay out of the current complete-call implementation.
 

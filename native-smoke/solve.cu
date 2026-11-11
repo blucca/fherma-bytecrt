@@ -36,6 +36,7 @@ struct State {
     uint32_t* untwist_crt = nullptr;
     uint32_t* weighted = nullptr;
     uint32_t* out = nullptr;
+    uint32_t* hostout = nullptr;
     uint32_t* q = nullptr;
     uint32_t* primes = nullptr;
     uint32_t* neg_inverses = nullptr;
@@ -50,6 +51,7 @@ struct State {
     ~State() {
         for (auto e : events) if (e) cudaEventDestroy(e);
         for (void* p : allocations) cudaFree(p);
+        if (hostout) cudaFreeHost(hostout);
     }
 };
 
@@ -132,6 +134,7 @@ void* fherma_init(const fherma::Point& p) {
     allocate(*s, s->weighted, size_t(p.N) * (s->plan.kpad / 4));
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
+    check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
     fixed_copy(*s, s->q, p.q.data);
     fixed_copy(*s, s->primes, s->plan.primes);
     fixed_copy(*s, s->powers_mont, s->plan.powers_mont);
@@ -147,11 +150,12 @@ void* fherma_init(const fherma::Point& p) {
         neg_inverse[j] = constants[j].n_dash;
         if (uint32_t(uint64_t(prime) * neg_inverse[j]) != UINT32_MAX)
             throw std::runtime_error("ByteCRT Montgomery inverse");
+        const uint32_t r_mod_p = s->plan.powers_mont[size_t(j) * p.L];
         uint32_t forward_power = 1, inverse_power = s->plan.crt_inverse[j];
         const uint32_t inverse_step = bytecrt::rns_detail::pow_mod(s->plan.psi_roots[j], prime - 2, prime);
         for (uint32_t i = 0; i < p.N; ++i) {
             const size_t index = size_t(j) * p.N + i;
-            psi[index] = forward_power;
+            psi[index] = uint32_t(uint64_t(forward_power) * r_mod_p % prime); // Montgomery
             untwist_crt[index] = inverse_power;
             forward_power = uint32_t(uint64_t(forward_power) * s->plan.psi_roots[j] % prime);
             inverse_power = uint32_t(uint64_t(inverse_power) * inverse_step % prime);
@@ -187,11 +191,11 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     else product<32768, 57, 256>(s, profile);
     check(cudaDeviceSynchronize(), "full product execute");
     const auto t2 = Clock::now();
+    check(cudaMemcpy(s.hostout, s.out, bytes, cudaMemcpyDeviceToHost), "copy complete coefficients");
+    const auto t3 = Clock::now();
     fherma::Outputs out;
     out.c.shape = {static_cast<int64_t>(s.plan.n), static_cast<int64_t>(s.plan.l)};
-    out.c.data.resize(coeffs);
-    const auto t3 = Clock::now();
-    check(cudaMemcpy(out.c.data.data(), s.out, bytes, cudaMemcpyDeviceToHost), "copy complete coefficients");
+    out.c.data.assign(s.hostout, s.hostout + coeffs);
     const auto t4 = Clock::now();
     if (profile) {
         const char* names[] = {"encode", "forward1", "fused-middle", "inverse-weighted", "G1"};
@@ -201,7 +205,7 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
             std::fprintf(stderr, "ByteCRT GPU %s: %.3f us (first warm-up)\n", names[i], double(ms) * 1000);
         }
         const auto us = [](auto a, auto b) { return std::chrono::duration<double, std::micro>(b-a).count(); };
-        std::fprintf(stderr, "ByteCRT host H2D=%.3f product=%.3f output-allocate=%.3f D2H=%.3f us (first warm-up)\n",
+        std::fprintf(stderr, "ByteCRT host H2D=%.3f product=%.3f D2H=%.3f output-construct=%.3f us (first warm-up)\n",
                      us(t0,t1), us(t1,t2), us(t2,t3), us(t3,t4));
     }
     return out;
