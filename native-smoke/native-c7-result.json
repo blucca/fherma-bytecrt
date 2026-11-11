@@ -1,0 +1,139 @@
+{
+  "status": "PASS",
+  "source_commit": "58e74d528f8c3c345fb5257bd152bc888f4a28ec",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.003642278,
+        "median": 0.003732978,
+        "mean": 0.0037040663333333334,
+        "max": 0.003736943
+      },
+      "fresh_seeds": [
+        48,
+        66,
+        76
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.001134938,
+        "median": 0.001145584,
+        "mean": 0.001144447,
+        "max": 0.001152819
+      },
+      "fresh_seeds": [
+        13,
+        52,
+        83
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 408.736,
+            "forward1": 152.512,
+            "fused-middle": 103.68,
+            "inverse-weighted": 198.368,
+            "G1": 299.392,
+            "H2D": 909.152
+          },
+          "host_us": {
+            "input-pack": 1037.574,
+            "H2D+product": 2099.384,
+            "D2H": 267.838,
+            "output-construct": 3513.786
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 390.848,
+            "forward1": 150.496,
+            "fused-middle": 100.352,
+            "inverse-weighted": 194.56,
+            "G1": 299.04,
+            "H2D": 876.352
+          },
+          "host_us": {
+            "input-pack": 498.766,
+            "H2D+product": 2038.642,
+            "D2H": 264.442,
+            "output-construct": 985.459
+          }
+        }
+      ]
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 129.888,
+            "forward1": 44.032,
+            "fused-middle": 29.376,
+            "inverse-weighted": 52.64,
+            "G1": 102.432,
+            "H2D": 277.856
+          },
+          "host_us": {
+            "input-pack": 611.367,
+            "H2D+product": 658.061,
+            "D2H": 157.284,
+            "output-construct": 893.452
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 119.296,
+            "forward1": 38.912,
+            "fused-middle": 24.576,
+            "inverse-weighted": 51.2,
+            "G1": 100.384,
+            "H2D": 211.808
+          },
+          "host_us": {
+            "input-pack": 332.272,
+            "H2D+product": 563.814,
+            "D2H": 73.64,
+            "output-construct": 247.614
+          }
+        }
+      ]
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T10:34:54.388Z",
+  "measurement_scope": "complete native diagnostic, three fresh seeds per full point",
+  "changes": "transposed tensor-RNS input and coalesced forward NTT load; disjoint normal intermediate"
+}
