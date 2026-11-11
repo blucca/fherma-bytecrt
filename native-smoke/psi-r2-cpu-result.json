@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "CPU_elapsed_seconds": 1.6017937860451639,
+  "compiler": "g++ -std=c++17 -O2 -Wall -Wextra -Werror",
+  "gpu_runs": 0,
+  "factor_count": 9338880,
+  "canonical_and_full_u32_word_identities": 46694400,
+  "SDK_device_execution": "pending target gate; CPU check uses documented semantic oracle",
+  "scope": "source-lifted Montgomery helper and SDK constructor/documented ordinary-to-Montgomery contract; both full point factors; actual GPU/whole-call follow in C19",
+  "base_complete_input": "retained C18 chunked input, complete 3/3 fresh seeds per point"
+}

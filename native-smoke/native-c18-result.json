@@ -1,0 +1,580 @@
+{
+  "status": "PASS",
+  "source_commit": "8611d50994c116dfc646c203d9591ac2111d6b8e",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.001510648,
+        "median": 0.001560176,
+        "mean": 0.0015586553333333333,
+        "max": 0.001605142
+      },
+      "fresh_seeds": [
+        2,
+        40,
+        59
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.000510034,
+        "median": 0.000533232,
+        "mean": 0.0005365656666666668,
+        "max": 0.000566431
+      },
+      "fresh_seeds": [
+        37,
+        41,
+        58
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 397.088,
+            "forward1": 175.296,
+            "fused-middle": 106.08,
+            "inverse-weighted": 88.064,
+            "G1": 172.576,
+            "H2D": 1425.632,
+            "H2D-service": 1375.136
+          },
+          "host_us": {
+            "input-pack": 120.121,
+            "H2D+product": 1231.421,
+            "D2H": 987.268,
+            "output-construct": 60.723
+          },
+          "input_pipeline": {
+            "per_operand_chunks": {
+              "A": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 303.424,
+                    "encode": 96.544
+                  },
+                  "host-pack-us": 119.064
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 270.08,
+                    "encode": 61.344
+                  },
+                  "host-pack-us": 158.612
+                },
+                {
+                  "chunk": 2,
+                  "GPU_us": {
+                    "H2D": 224.576,
+                    "encode": 65.152
+                  },
+                  "host-pack-us": 167.003
+                },
+                {
+                  "chunk": 3,
+                  "GPU_us": {
+                    "H2D": 194.24,
+                    "encode": 27.808
+                  },
+                  "host-pack-us": 97.896
+                }
+              ],
+              "B": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 72.48,
+                    "encode": 38.88
+                  },
+                  "host-pack-us": 116.214
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 90.048,
+                    "encode": 38.016
+                  },
+                  "host-pack-us": 118.277
+                },
+                {
+                  "chunk": 2,
+                  "GPU_us": {
+                    "H2D": 103.456,
+                    "encode": 41.536
+                  },
+                  "host-pack-us": 88.075
+                },
+                {
+                  "chunk": 3,
+                  "GPU_us": {
+                    "H2D": 116.832,
+                    "encode": 27.808
+                  },
+                  "host-pack-us": 61.135
+                }
+              ]
+            },
+            "chunks": 4,
+            "H2D-service-sum-us": 1375.136,
+            "encode-service-sum-us": 397.088,
+            "tail-encode-us": {
+              "A": 30.72,
+              "B": 29.984
+            },
+            "coefficients": 16384,
+            "host-pack-enqueue-us": {
+              "A": 806.727,
+              "B": 451.044
+            }
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 1003.008,
+                "encode": 250.848,
+                "forward1": 97.92
+              },
+              "B": {
+                "H2D-span": 385.376,
+                "encode": 146.24,
+                "forward1": 77.376
+              }
+            },
+            "GPU-pipeline-wall-us": 1900.128,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 542.575,
+              "B": 383.701,
+              "total": 926.276
+            }
+          },
+          "output_pipeline": {
+            "chunks": 4,
+            "enqueue-us": 47.497,
+            "drain-us": 1047.991
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 409.152,
+            "forward1": 167.456,
+            "fused-middle": 99.904,
+            "inverse-weighted": 81.92,
+            "G1": 166.528,
+            "H2D": 907.808,
+            "H2D-service": 902.432
+          },
+          "host_us": {
+            "input-pack": 56.249,
+            "H2D+product": 669.16,
+            "D2H": 856.022,
+            "output-construct": 57.389
+          },
+          "input_pipeline": {
+            "per_operand_chunks": {
+              "A": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 192.576,
+                    "encode": 69.056
+                  },
+                  "host-pack-us": 55.81
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 148.256,
+                    "encode": 38.976
+                  },
+                  "host-pack-us": 75.312
+                },
+                {
+                  "chunk": 2,
+                  "GPU_us": {
+                    "H2D": 85.952,
+                    "encode": 42.368
+                  },
+                  "host-pack-us": 55.222
+                },
+                {
+                  "chunk": 3,
+                  "GPU_us": {
+                    "H2D": 87.232,
+                    "encode": 37.92
+                  },
+                  "host-pack-us": 71.201
+                }
+              ],
+              "B": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 78.176,
+                    "encode": 103.552
+                  },
+                  "host-pack-us": 67.563
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 78.08,
+                    "encode": 43.744
+                  },
+                  "host-pack-us": 66.657
+                },
+                {
+                  "chunk": 2,
+                  "GPU_us": {
+                    "H2D": 107.104,
+                    "encode": 45.728
+                  },
+                  "host-pack-us": 49.548
+                },
+                {
+                  "chunk": 3,
+                  "GPU_us": {
+                    "H2D": 125.056,
+                    "encode": 27.808
+                  },
+                  "host-pack-us": 63.979
+                }
+              ]
+            },
+            "chunks": 4,
+            "H2D-service-sum-us": 902.432,
+            "encode-service-sum-us": 409.152,
+            "tail-encode-us": {
+              "A": 53.92,
+              "B": 32.032
+            },
+            "coefficients": 16384,
+            "host-pack-enqueue-us": {
+              "A": 364.132,
+              "B": 321.434
+            }
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 516.352,
+                "encode": 188.32,
+                "forward1": 90.08
+              },
+              "B": {
+                "H2D-span": 391.008,
+                "encode": 220.832,
+                "forward1": 77.376
+              }
+            },
+            "GPU-pipeline-wall-us": 1366.016,
+            "join-wait-us": 0.448,
+            "host-pack-us": {
+              "A": 257.545,
+              "B": 247.747,
+              "total": 505.292
+            }
+          },
+          "output_pipeline": {
+            "chunks": 4,
+            "enqueue-us": 28.395,
+            "drain-us": 913.411
+          }
+        }
+      ],
+      "setup_locality": {
+        "BDF": "0000:fe:00.0",
+        "gpu-numa-node": "0",
+        "gpu-local-cpulist": "0-23",
+        "gpu-link-speed": "32.0 GT/s PCIe",
+        "gpu-link-width": "16",
+        "cpu-allowed-list": "0-23"
+      },
+      "memory_attributes": {
+        "PageableMemoryAccess": {
+          "query_success": true,
+          "value": 0
+        },
+        "PageableMemoryAccessUsesHostPageTables": {
+          "query_success": true,
+          "value": 0
+        },
+        "HostRegisterSupported": {
+          "query_success": true,
+          "value": 1
+        },
+        "HostRegisterReadOnlySupported": {
+          "query_success": true,
+          "value": 1
+        },
+        "CanUseHostPointerForRegisteredMem": {
+          "query_success": true,
+          "value": 1
+        }
+      }
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 86.048,
+            "forward1": 74.368,
+            "fused-middle": 31.072,
+            "inverse-weighted": 29.952,
+            "G1": 39.712,
+            "H2D": 627.2,
+            "H2D-service": 560.352
+          },
+          "host_us": {
+            "input-pack": 57.118,
+            "H2D+product": 697.168,
+            "D2H": 154.19,
+            "output-construct": 22.467
+          },
+          "input_pipeline": {
+            "per_operand_chunks": {
+              "A": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 191.968,
+                    "encode": 23.52
+                  },
+                  "host-pack-us": 55.65
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 169.792,
+                    "encode": 14.976
+                  },
+                  "host-pack-us": 74.149
+                }
+              ],
+              "B": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 131.52,
+                    "encode": 32.064
+                  },
+                  "host-pack-us": 108.04
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 67.072,
+                    "encode": 15.488
+                  },
+                  "host-pack-us": 120.375
+                }
+              ]
+            },
+            "chunks": 2,
+            "H2D-service-sum-us": 560.352,
+            "encode-service-sum-us": 86.048,
+            "tail-encode-us": {
+              "A": 17.856,
+              "B": 19.36
+            },
+            "coefficients": 16384,
+            "host-pack-enqueue-us": {
+              "A": 381.911,
+              "B": 277.0
+            }
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 399.424,
+                "encode": 38.496,
+                "forward1": 51.168
+              },
+              "B": {
+                "H2D-span": 200.16,
+                "encode": 47.552,
+                "forward1": 23.2
+              }
+            },
+            "GPU-pipeline-wall-us": 770.912,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 129.799,
+              "B": 228.415,
+              "total": 358.214
+            }
+          },
+          "output_pipeline": {
+            "chunks": 2,
+            "enqueue-us": 33.655,
+            "drain-us": 176.657
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 97.408,
+            "forward1": 60.032,
+            "fused-middle": 26.24,
+            "inverse-weighted": 26.592,
+            "G1": 35.488,
+            "H2D": 343.808,
+            "H2D-service": 319.2
+          },
+          "host_us": {
+            "input-pack": 23.009,
+            "H2D+product": 330.516,
+            "D2H": 216.521,
+            "output-construct": 22.287
+          },
+          "input_pipeline": {
+            "per_operand_chunks": {
+              "A": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 86.944,
+                    "encode": 28.48
+                  },
+                  "host-pack-us": 22.776
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 82.816,
+                    "encode": 22.592
+                  },
+                  "host-pack-us": 58.341
+                }
+              ],
+              "B": [
+                {
+                  "chunk": 0,
+                  "GPU_us": {
+                    "H2D": 75.872,
+                    "encode": 31.296
+                  },
+                  "host-pack-us": 59.987
+                },
+                {
+                  "chunk": 1,
+                  "GPU_us": {
+                    "H2D": 73.568,
+                    "encode": 15.04
+                  },
+                  "host-pack-us": 49.625
+                }
+              ]
+            },
+            "chunks": 2,
+            "H2D-service-sum-us": 319.2,
+            "encode-service-sum-us": 97.408,
+            "tail-encode-us": {
+              "A": 41.504,
+              "B": 17.6
+            },
+            "coefficients": 16384,
+            "host-pack-enqueue-us": {
+              "A": 163.99,
+              "B": 155.47
+            }
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 183.232,
+                "encode": 51.072,
+                "forward1": 37.952
+              },
+              "B": {
+                "H2D-span": 150.976,
+                "encode": 46.336,
+                "forward1": 22.08
+              }
+            },
+            "GPU-pipeline-wall-us": 472.224,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 81.117,
+              "B": 109.612,
+              "total": 190.729
+            }
+          },
+          "output_pipeline": {
+            "chunks": 2,
+            "enqueue-us": 19.984,
+            "drain-us": 238.808
+          }
+        }
+      ],
+      "setup_locality": {
+        "BDF": "0000:fe:00.0",
+        "gpu-numa-node": "0",
+        "gpu-local-cpulist": "0-23",
+        "gpu-link-speed": "32.0 GT/s PCIe",
+        "gpu-link-width": "16",
+        "cpu-allowed-list": "0-23"
+      },
+      "memory_attributes": {
+        "PageableMemoryAccess": {
+          "query_success": true,
+          "value": 0
+        },
+        "PageableMemoryAccessUsesHostPageTables": {
+          "query_success": true,
+          "value": 0
+        },
+        "HostRegisterSupported": {
+          "query_success": true,
+          "value": 1
+        },
+        "HostRegisterReadOnlySupported": {
+          "query_success": true,
+          "value": 1
+        },
+        "CanUseHostPointerForRegisteredMem": {
+          "query_success": true,
+          "value": 1
+        }
+      }
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T14:30:07.601Z",
+  "measurement_scope": "complete native diagnostic, 3 fresh seeds per full point",
+  "changes": "C18 fixed 16384-coefficient input pack/H2D/MT32 encode pipeline; one H2D-only stream; unchanged C16 complete output pipeline",
+  "phase_scope": "Fixed chunked input: input-pack is first A chunk front; operand-pack sums all pure chunk pack spans. A/B pack-enqueue covers each operand first pack through full-forward submission. Operand H2D spans cover its first-to-last copy event endpoints on the one H2D stream, including host-supply gaps; global H2D covers first A copy-start event to last B copy-end event. H2D-service sums each chunk start/end GPU event-pair elapsed; each pair can include host enqueue gaps when its stream queue drains. Encode sums chunk event-pair spans after ready waits, including same-pair host enqueue gaps and concurrent compute/DMA scheduling or competition. Tail encode is last-copy-end event to complete operand-encode event. Active DMA timing is a trace-defined scope; this run reports event endpoints. Original forward1/join/middle/inverse/G1 and C16 output scopes remain: D2H includes pending compute/copies/early inserts, final output-construct is final insert. Scored whole-call includes every pack/copy/completion/owned construction; scored calls omit diagnostic timing events, which occur only in warmups."
+}

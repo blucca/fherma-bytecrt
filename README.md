@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Official complete result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.690 ms / 0.525 ms**, ranked **#19** at measurement ([official C16 result](native-smoke/native-official-c16-result.json)); source is pinned at [official-c16-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c16-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. The [first official C15 result](native-smoke/native-official-c15-result.json) and its `first-official-20seed` tag preserve the earlier 1.927 ms / 0.938 ms measurement. Current C18 input changes have a separate complete native gate.
+**Official complete result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.690 ms / 0.525 ms**, ranked **#19** at measurement ([official C16 result](native-smoke/native-official-c16-result.json)); source is pinned at [official-c16-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c16-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. The [first official C15 result](native-smoke/native-official-c15-result.json) and its `first-official-20seed` tag preserve the earlier 1.927 ms / 0.938 ms measurement. The [C18 native gate](native-smoke/native-c18-result.json) passes both full outputs at 3/3 seeds, with medians **1.560 ms / 0.533 ms**; its source is the `native-c18` tag. Current C19 forward-factor work has a separate full native gate.
 
 ```sh
 python3 -B reference.py
@@ -153,3 +153,8 @@ The current output candidate uses fixed 512-CTA slices, each covering 16,384 con
 ## Chunked input candidate
 
 C18 pipelines fixed 16,384-coefficient input chunks: four per operand at the primary point, two at the auxiliary. Each completed bounded CPU pack is copied on one H2D-only stream, then its readiness event starts the matching MT32 encoder range on the original operand stream. Complete first-stage NTT runs after all of that operand's encodes; B joins A before the unchanged middle/inverse/CRT/output chain. Partial encoder ranges retain every original integer operation and cover two whole transposed tiles each. [CPU/source check](native-smoke/input-pipeline-cpu-result.json) passes complete input/RNS/forward indexes and returned ownership; target CUDA/exactness and whole-call performance are measured separately.
+
+
+## Fixed forward conversion and twist
+
+C19 combines the coalesced first-stage canonical-to-Montgomery conversion and negacyclic twist using one fixed `ψ^i R² mod p` factor in the existing table. `Mont(x,ψ^iR²)=xψ^iR mod p` preserves every subsequent staged NTT/CRT operation and C18 input/output dependency. [Source/CPU proof](native-smoke/psi-r2-cpu-result.json) passes the full two-point factor tables and boundary words. The unchanged original natural NTT fixture remains available; target exactness/performance follow in the separate C19 gate.
