@@ -11,13 +11,13 @@
 #include <array>
 #include <chrono>
 #include <cstdio>
-#include <exception>
 #include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
+void bytecrt_pack_operand(uint32_t*, const uint32_t*, std::size_t);
 
 namespace {
 
@@ -65,38 +65,6 @@ void print_setup_attribute(const char* label, cudaDeviceAttr attribute) {
                  label, success, success && value != 0);
 }
 
-// Fixed C17 contract: registered sources are read-only to the device.
-void require_registered_input_access() {
-    int supported = 0, read_only = 0;
-    check(cudaDeviceGetAttribute(&supported, cudaDevAttrHostRegisterSupported, 0), "host registration support");
-    check(cudaDeviceGetAttribute(&read_only, cudaDevAttrHostRegisterReadOnlySupported, 0), "read-only host registration");
-    if (!supported || !read_only)
-        throw std::runtime_error("ByteCRT requires read-only host registration support");
-}
-
-// Each successful registration belongs to this measured call only.
-struct InputRegistration {
-    void* pointer = nullptr;
-    InputRegistration(const uint32_t* source, size_t bytes) {
-        void* base = const_cast<uint32_t*>(source);
-        check(cudaHostRegister(base, bytes, cudaHostRegisterReadOnly), "register source input");
-        pointer = base;
-    }
-    InputRegistration(const InputRegistration&) = delete;
-    InputRegistration& operator=(const InputRegistration&) = delete;
-    ~InputRegistration() {
-        if (pointer) {
-            // Error unwinding: both streams finish before their sources unpin.
-            if (cudaDeviceSynchronize() != cudaSuccess) std::terminate();
-            if (cudaHostUnregister(pointer) != cudaSuccess) std::terminate();
-        }
-    }
-    void close() {
-        check(cudaHostUnregister(pointer), "unregister source input");
-        pointer = nullptr;
-    }
-};
-
 struct State {
     bytecrt::RnsPlan plan;
     uint32_t* inputs = nullptr;
@@ -110,6 +78,7 @@ struct State {
     uint32_t* weighted = nullptr;
     uint32_t* out = nullptr;
     uint32_t* hostout = nullptr;
+    uint32_t* hostinput = nullptr;
     uint8_t* encode_b = nullptr;
     uint64_t* encode_mu = nullptr;
     uint32_t* q = nullptr;
@@ -136,6 +105,7 @@ struct State {
         for (auto stream : streams) if (stream) cudaStreamDestroy(stream);
         for (void* p : allocations) cudaFree(p);
         if (hostout) cudaFreeHost(hostout);
+        if (hostinput) cudaFreeHost(hostinput);
     }
 };
 
@@ -182,19 +152,16 @@ void mark_operand(State& s, bool profile, unsigned operand, unsigned event) {
 }
 
 template<uint32_t N, uint32_t P>
-void enqueue_operand(State& s, bool profile, unsigned operand, const uint32_t* source) {
+void enqueue_operand(State& s, bool profile, unsigned operand) {
     using namespace bytecrt::ntt;
     constexpr size_t first = cupqc::fwd_stage_1_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     const size_t coeffs = size_t(N) * s.plan.l;
     const size_t planes = size_t(N) * P;
     const auto stream = s.streams[operand];
     mark_operand(s, profile, operand, 0);
-    const auto copy_started = profile ? Clock::now() : Clock::time_point{};
-    check(cudaMemcpyAsync(s.inputs + operand * coeffs, source,
+    check(cudaMemcpyAsync(s.inputs + operand * coeffs, s.hostinput + operand * coeffs,
                           coeffs * sizeof(uint32_t), cudaMemcpyHostToDevice, stream),
-          "copy registered source operand");
-    const double copy_api_us = profile ?
-        std::chrono::duration<double, std::micro>(Clock::now() - copy_started).count() : 0;
+          "copy packed operand");
     mark_operand(s, profile, operand, 1);
     bytecrt::launch_encode_mma32_transposed(N, s.plan.l, P, s.inputs + operand * coeffs,
         s.encode_b, s.primes, s.encode_mu, s.ab_t + operand * planes, stream, 1);
@@ -207,8 +174,6 @@ void enqueue_operand(State& s, bool profile, unsigned operand, const uint32_t* s
     mark_operand(s, profile, operand, 3);
     if (operand == 0)
         check(cudaEventRecord(s.a_forwarded, stream), "A-forwarded dependency");
-    if (profile) std::fprintf(stderr, "ByteCRT host registered-copy operand-%c API=%.3f us (warm-up %u)\n",
-                              'A' + operand, copy_api_us, s.calls);
 }
 
 template<uint32_t N, uint32_t P, uint32_t Kpad>
@@ -273,6 +238,7 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
     check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
+    check(cudaMallocHost(&s->hostinput, 2 * coeffs * sizeof(uint32_t)), "allocate pinned input");
     fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes));
     std::vector<uint64_t> encode_mu(s->plan.pcount);
     for (unsigned j = 0; j < s->plan.pcount; ++j) encode_mu[j] = UINT64_MAX / s->plan.primes[j];
@@ -340,7 +306,6 @@ void* fherma_init(const fherma::Point& p) {
     print_setup_attribute("HostRegisterReadOnlySupported", cudaDevAttrHostRegisterReadOnlySupported);
     print_setup_attribute("CanUseHostPointerForRegisteredMem",
                           cudaDevAttrCanUseHostPointerForRegisteredMem);
-    require_registered_input_access();
     return s.release();
 }
 
@@ -355,18 +320,18 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     const unsigned call = s.calls++;
     const bool profile = call < 2;
     const auto t0 = Clock::now();
-    InputRegistration registered_a(in.a.data.data(), coeffs * sizeof(uint32_t));
-    const auto a_registered = Clock::now();
-    if (s.plan.n == 65536) enqueue_operand<65536, 114>(s, profile, 0, in.a.data.data());
-    else enqueue_operand<32768, 57>(s, profile, 0, in.a.data.data());
+    bytecrt_pack_operand(s.hostinput, in.a.data.data(), coeffs);
+    const auto a_packed = Clock::now();
+    if (s.plan.n == 65536) enqueue_operand<65536, 114>(s, profile, 0);
+    else enqueue_operand<32768, 57>(s, profile, 0);
     const auto a_submitted = Clock::now();
-    InputRegistration registered_b(in.b.data.data(), coeffs * sizeof(uint32_t));
-    const auto b_registered = Clock::now();
+    bytecrt_pack_operand(s.hostinput + coeffs, in.b.data.data(), coeffs);
+    const auto b_packed = Clock::now();
     if (s.plan.n == 65536) {
-        enqueue_operand<65536, 114>(s, profile, 1, in.b.data.data());
+        enqueue_operand<65536, 114>(s, profile, 1);
         finish_product<65536, 114, 480>(s, profile);
     } else {
-        enqueue_operand<32768, 57>(s, profile, 1, in.b.data.data());
+        enqueue_operand<32768, 57>(s, profile, 1);
         finish_product<32768, 57, 256>(s, profile);
     }
     const auto output_begin = Clock::now();
@@ -386,10 +351,6 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     }
     // Last copied implies all B CRT chunks and the joined A work completed;
     // the last standard insert barrier completes every returned owned word.
-    const auto inserted = Clock::now();
-    registered_b.close();
-    const auto b_unregistered = Clock::now();
-    registered_a.close();
     const auto t4 = Clock::now();
     if (profile) {
         const auto elapsed = [](cudaEvent_t a, cudaEvent_t b) {
@@ -422,25 +383,17 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
             elapsed(s.operand_events[0][0], s.events[3]),
             elapsed(s.operand_events[1][3], s.events[0]), call + 1);
         const auto us = [](auto a, auto b) { return std::chrono::duration<double, std::micro>(b-a).count(); };
-        // input-pack is the front A registration; the legacy operand-pack
-        // fields alias A/B registration. Four fields still add to whole time.
-        // output-construct includes final insert plus the checked unregistrations.
-        // H2D+product ends at
+        // Four fields still add to whole host time. H2D+product ends at
         // output submission; D2H includes pending compute/copies and early
-        // inserts; output-construct reaches final input cleanup. These overlap-aware
+        // inserts; output-construct is the final insert. These overlap-aware
         // spans are supplemented by output enqueue/drain below.
         std::fprintf(stderr, "ByteCRT host input-pack=%.3f H2D+product=%.3f D2H=%.3f output-construct=%.3f us (warm-up %u)\n",
-                     us(t0,a_registered), us(a_registered,t2), us(t2,t3), us(t3,t4), call + 1);
+                     us(t0,a_packed), us(a_packed,t2), us(t2,t3), us(t3,t4), call + 1);
         std::fprintf(stderr, "ByteCRT host output-pipeline chunks=%u enqueue=%.3f drain=%.3f us (warm-up %u)\n",
-            chunks, us(output_begin,t2), us(t2,inserted), call + 1);
+            chunks, us(output_begin,t2), us(t2,t4), call + 1);
         std::fprintf(stderr, "ByteCRT host operand-pack A=%.3f B=%.3f total=%.3f us (warm-up %u)\n",
-            us(t0,a_registered), us(a_submitted,b_registered),
-            us(t0,a_registered) + us(a_submitted,b_registered), call + 1);
-        std::fprintf(stderr, "ByteCRT host input-register A=%.3f B=%.3f total=%.3f us (warm-up %u)\n",
-            us(t0,a_registered), us(a_submitted,b_registered),
-            us(t0,a_registered) + us(a_submitted,b_registered), call + 1);
-        std::fprintf(stderr, "ByteCRT host input-unregister A=%.3f B=%.3f total=%.3f us (warm-up %u)\n",
-            us(b_unregistered,t4), us(inserted,b_unregistered), us(inserted,t4), call + 1);
+            us(t0,a_packed), us(a_submitted,b_packed),
+            us(t0,a_packed) + us(a_submitted,b_packed), call + 1);
     }
     return out;
 }
