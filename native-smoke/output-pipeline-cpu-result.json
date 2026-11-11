@@ -1,0 +1,50 @@
+{
+  "status": "PASS",
+  "base_commit": "fc710119230c3fcdfe6cc90e62678b9b44f078e3",
+  "cpu": {
+    "status": "PASS",
+    "cpu_mock_scored_calls": 2,
+    "gpu_executions": 0,
+    "source_weighted_indices": 9961472,
+    "source_output_indices": 4521984,
+    "owned_output_words": 4521984,
+    "packed_words": 9043968,
+    "dependency_events": 14,
+    "stream_waits": 8,
+    "input_libc_worker_copies": 48,
+    "parallel_standard_output_inserts": 6,
+    "last_copied_complete": true,
+    "max_chunks": 4,
+    "copy_stream": "original-A",
+    "local_omp_processors": 4
+  },
+  "source_scope": "actual lifted C15 host run and chunk launcher; source-derived full MT32 gather/store indices; standard reserve/insert and pending-copy CUDA mocks",
+  "crt_arithmetic_body": "byte-for-byte retained after the block-index offset",
+  "mt16_kernel_and_launcher": "byte-for-byte retained",
+  "mt32_default_full_call": "retained",
+  "native_cuda_compile": "root actual gate",
+  "native_execution": "root actual gate",
+  "fixed_setup_attributes": {
+    "status": "PASS",
+    "scope": "five source-extracted init calls and observation helper; CUDA enum/API CPU compile mocks",
+    "fields": [
+      "PageableMemoryAccess",
+      "PageableMemoryAccessUsesHostPageTables",
+      "HostRegisterSupported",
+      "HostRegisterReadOnlySupported",
+      "CanUseHostPointerForRegisteredMem"
+    ],
+    "device": 0,
+    "CPU_mock_queries": 5,
+    "query_success_and_value": "both printed as 0/1; success-zero, success-nonzero and query-failure branches checked",
+    "optional_query_error_cleanup": {
+      "last_error_clears": 1,
+      "failure_only": true,
+      "success_query_clears": 0
+    },
+    "whole_index_gate": "reused",
+    "run_algorithm_allocator_affinity": "byte-identical after removing only the observation helper and init calls",
+    "native_attribute_values": "root fixed-setup actual readout",
+    "GPU_queries": 0
+  }
+}

@@ -24,6 +24,14 @@ namespace {
 using Clock = std::chrono::steady_clock;
 using Constant = cupqc::nttConst<uint32_t>;
 
+// Fixed 512-CTA chunks keep two complete transposed tiles together.
+// MT32 gives 16,384 natural coefficients per chunk: main=4, aux=2.
+// Cap at four chunks: more splits add launch/DMA/OpenMP barriers for
+// only ~37 us extra ideal main saving. Main target saving: 120-180 us.
+constexpr unsigned kOutputBlocks = 512;
+constexpr unsigned kOutputCoefficients = 32 * kOutputBlocks;
+constexpr unsigned kMaxOutputChunks = 4;
+
 void check(cudaError_t e, const char* what) {
     if (e != cudaSuccess)
         throw std::runtime_error(std::string("ByteCRT ") + what + ": " + cudaGetErrorString(e));
@@ -45,6 +53,16 @@ void print_setup_value(const char* label, const std::string& path,
         }
     }
     std::fprintf(stderr, "ByteCRT locality %s available=false\n", label);
+}
+
+// Fixed-setup capability readout for the next input-staging decision.
+void print_setup_attribute(const char* label, cudaDeviceAttr attribute) {
+    int value = 0;
+    const auto status = cudaDeviceGetAttribute(&value, attribute, 0);
+    if (status != cudaSuccess) (void)cudaGetLastError();
+    const int success = status == cudaSuccess;
+    std::fprintf(stderr, "ByteCRT memory-attribute %s query-success=%d value=%d\n",
+                 label, success, success && value != 0);
 }
 
 struct State {
@@ -71,6 +89,8 @@ struct State {
     Constant* constants = nullptr;
     std::vector<void*> allocations;
     std::array<cudaStream_t, 2> streams{};
+    std::array<cudaEvent_t, kMaxOutputChunks> crt_done{};
+    std::array<cudaEvent_t, kMaxOutputChunks> copied{};
     cudaEvent_t a_forwarded = nullptr;  // dependency only; timing disabled
     std::array<std::array<cudaEvent_t, 4>, 2> operand_events{};
     std::array<cudaEvent_t, 4> events{};  // joined middle / inverse / CRT
@@ -79,6 +99,8 @@ struct State {
         for (auto e : events) if (e) cudaEventDestroy(e);
         for (const auto& op : operand_events)
             for (auto e : op) if (e) cudaEventDestroy(e);
+        for (auto e : crt_done) if (e) cudaEventDestroy(e);
+        for (auto e : copied) if (e) cudaEventDestroy(e);
         if (a_forwarded) cudaEventDestroy(a_forwarded);
         for (auto stream : streams) if (stream) cudaStreamDestroy(stream);
         for (void* p : allocations) cudaFree(p);
@@ -172,10 +194,30 @@ void finish_product(State& s, bool profile) {
         s.c, s.weighted, s.inv_tw, s.untwist_crt, s.constants, s.n_inverse);
     check(cudaGetLastError(), "inverse weighted packing");
     mark(s, profile, 2, stream);
-    bytecrt::launch_g1_crt32_transposed(s.plan.w, N, reinterpret_cast<const uint8_t*>(s.weighted),
-                         s.b_matrix, s.invp, s.q, s.plan.gap, s.out, stream);
-    check(cudaGetLastError(), "fused byte CRT");
-    mark(s, profile, 3, stream);
+}
+
+void enqueue_output(State& s, bool profile) {
+    const auto stream = s.streams[1];
+    // A-forward is an ancestor of every CRT done; reuse the A stream
+    // for output after those events, keeping the two-stream DAG acyclic.
+    const auto copy_stream = s.streams[0];
+    const unsigned chunks = s.plan.n / kOutputCoefficients;
+    const size_t words = size_t(kOutputCoefficients) * s.plan.l;
+    for (unsigned chunk = 0; chunk < chunks; ++chunk) {
+        bytecrt::launch_g1_crt32_transposed(s.plan.w, s.plan.n,
+            reinterpret_cast<const uint8_t*>(s.weighted),
+            s.b_matrix, s.invp, s.q, s.plan.gap, s.out, stream,
+            chunk * kOutputBlocks, kOutputBlocks);
+        check(cudaGetLastError(), "fused byte CRT chunk");
+        if (chunk + 1 == chunks) mark(s, profile, 3, stream);
+        check(cudaEventRecord(s.crt_done[chunk], stream), "CRT chunk ready");
+        check(cudaStreamWaitEvent(copy_stream, s.crt_done[chunk], 0),
+              "copy waits for CRT chunk");
+        check(cudaMemcpyAsync(s.hostout + chunk * words, s.out + chunk * words,
+                              words * sizeof(uint32_t), cudaMemcpyDeviceToHost,
+                              copy_stream), "copy coefficient chunk");
+        check(cudaEventRecord(s.copied[chunk], copy_stream), "output chunk copied");
+    }
 }
 
 }  // namespace
@@ -234,6 +276,12 @@ void* fherma_init(const fherma::Point& p) {
     else initialize_tables<32768>(*s);
     for (auto& stream : s->streams)
         check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), "operand stream setup");
+    for (unsigned chunk = 0; chunk < p.N / kOutputCoefficients; ++chunk) {
+        check(cudaEventCreateWithFlags(&s->crt_done[chunk], cudaEventDisableTiming),
+              "CRT chunk event setup");
+        check(cudaEventCreateWithFlags(&s->copied[chunk], cudaEventDisableTiming),
+              "copied chunk event setup");
+    }
     check(cudaEventCreateWithFlags(&s->a_forwarded, cudaEventDisableTiming),
           "A-forwarded event setup");
     for (auto& op : s->operand_events)
@@ -251,16 +299,24 @@ void* fherma_init(const fherma::Point& p) {
     print_setup_value("gpu-numa-node", pci + "/numa_node");
     print_setup_value("gpu-local-cpulist", pci + "/local_cpulist");
     print_setup_value("cpu-allowed-list", "/proc/self/status", "Cpus_allowed_list:");
+    print_setup_attribute("PageableMemoryAccess", cudaDevAttrPageableMemoryAccess);
+    print_setup_attribute("PageableMemoryAccessUsesHostPageTables",
+                          cudaDevAttrPageableMemoryAccessUsesHostPageTables);
+    print_setup_attribute("HostRegisterSupported", cudaDevAttrHostRegisterSupported);
+    print_setup_attribute("HostRegisterReadOnlySupported", cudaDevAttrHostRegisterReadOnlySupported);
+    print_setup_attribute("CanUseHostPointerForRegisteredMem",
+                          cudaDevAttrCanUseHostPointerForRegisteredMem);
     return s.release();
 }
 
 fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     auto& s = *static_cast<State*>(state);
     const size_t coeffs = size_t(s.plan.n) * s.plan.l;
-    const size_t bytes = coeffs * sizeof(uint32_t);
+    const unsigned chunks = s.plan.n / kOutputCoefficients;
+    const size_t chunk_words = size_t(kOutputCoefficients) * s.plan.l;
     if (in.a.data.size() != coeffs || in.b.data.size() != coeffs)
         throw std::runtime_error("ByteCRT input coefficient count");
-    // Warm-ups report phases; scored calls record only the A-forwarded dependency.
+    // Warm-ups report phases; scored calls record only required dependency events.
     const unsigned call = s.calls++;
     const bool profile = call < 2;
     const auto t0 = Clock::now();
@@ -278,13 +334,23 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
         enqueue_operand<32768, 57>(s, profile, 1);
         finish_product<32768, 57, 256>(s, profile);
     }
-    check(cudaDeviceSynchronize(), "full product execute");
-    const auto t2 = Clock::now();
-    check(cudaMemcpy(s.hostout, s.out, bytes, cudaMemcpyDeviceToHost), "copy complete coefficients");
-    const auto t3 = Clock::now();
+    const auto output_begin = Clock::now();
     fherma::Outputs out;
     out.c.shape = {static_cast<int64_t>(s.plan.n), static_cast<int64_t>(s.plan.l)};
-    out.c.data.assign(s.hostout, s.hostout + coeffs);
+    // reserve owns the full allocation; insert constructs each copied range
+    // through the standard vector API, without a full zero-fill pass.
+    out.c.data.reserve(coeffs);
+    enqueue_output(s, profile);
+    const auto t2 = Clock::now();
+    auto t3 = t2;
+    for (unsigned chunk = 0; chunk < chunks; ++chunk) {
+        check(cudaEventSynchronize(s.copied[chunk]), "wait for copied output chunk");
+        if (chunk + 1 == chunks) t3 = Clock::now();
+        const uint32_t* begin = s.hostout + chunk * chunk_words;
+        out.c.data.insert(out.c.data.end(), begin, begin + chunk_words);
+    }
+    // Last copied implies all B CRT chunks and the joined A work completed;
+    // the last standard insert barrier completes every returned owned word.
     const auto t4 = Clock::now();
     if (profile) {
         const auto elapsed = [](cudaEvent_t a, cudaEvent_t b) {
@@ -317,10 +383,14 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
             elapsed(s.operand_events[0][0], s.events[3]),
             elapsed(s.operand_events[1][3], s.events[0]), call + 1);
         const auto us = [](auto a, auto b) { return std::chrono::duration<double, std::micro>(b-a).count(); };
-        // Legacy four-field parser: input-pack is the front A pack only;
-        // H2D+product includes the overlapped B pack. The four fields add.
+        // Four fields still add to whole host time. H2D+product ends at
+        // output submission; D2H includes pending compute/copies and early
+        // inserts; output-construct is the final insert. These overlap-aware
+        // spans are supplemented by output enqueue/drain below.
         std::fprintf(stderr, "ByteCRT host input-pack=%.3f H2D+product=%.3f D2H=%.3f output-construct=%.3f us (warm-up %u)\n",
                      us(t0,a_packed), us(a_packed,t2), us(t2,t3), us(t3,t4), call + 1);
+        std::fprintf(stderr, "ByteCRT host output-pipeline chunks=%u enqueue=%.3f drain=%.3f us (warm-up %u)\n",
+            chunks, us(output_begin,t2), us(t2,t4), call + 1);
         std::fprintf(stderr, "ByteCRT host operand-pack A=%.3f B=%.3f total=%.3f us (warm-up %u)\n",
             us(t0,a_packed), us(a_submitted,b_packed),
             us(t0,a_packed) + us(a_submitted,b_packed), call + 1);

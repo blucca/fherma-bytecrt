@@ -13,7 +13,10 @@ extern "C" void bytecrt_vector_copy_observe(int, bool, std::size_t);
 #endif
 
 namespace {
-constexpr std::size_t kParallelBytes = 8 * 1024 * 1024;
+// Output chunks are 3.4375 MiB / 1.75 MiB; both retain parallel copy.
+// C15 operand-pack worker chunks stay below this 1.5 MiB threshold
+// (main max 1,201,496 B), preserving their direct libc path.
+constexpr std::size_t kParallelBytes = 1536 * 1024;
 
 void* parallel_copy(void* dest, const void* source, std::size_t bytes) {
     const int workers = std::min(12, omp_get_num_procs());

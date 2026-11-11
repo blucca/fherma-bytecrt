@@ -204,7 +204,8 @@ __global__ void g1_crt32(const uint8_t* __restrict__ a,
                         const float* __restrict__ invp,
                         const uint32_t* __restrict__ q,
                         uint32_t gap,
-                        uint32_t* __restrict__ out) {
+                        uint32_t* __restrict__ out,
+                        unsigned block_begin = 0) {
     static_assert((W == 1747 && L == 55 && P == 114 && Kpad == 480) ||
                   (W == 868 && L == 28 && P == 57 && Kpad == 256),
                   "G1 full-width geometries");
@@ -226,8 +227,9 @@ __global__ void g1_crt32(const uint8_t* __restrict__ a,
     const unsigned lane = tid & 31, warp = tid >> 5;
     const unsigned g = lane >> 2, t = lane & 3;
     const unsigned k_lane = 4 * t;
-    const unsigned id = Transposed ? blockIdx.x % transpose_m : 0;
-    const unsigned first_row = (Transposed ? blockIdx.x / transpose_m : blockIdx.x) * MT;
+    const unsigned block = block_begin + blockIdx.x;
+    const unsigned id = Transposed ? block % transpose_m : 0;
+    const unsigned first_row = (Transposed ? block / transpose_m : block) * MT;
     auto* shared_words = reinterpret_cast<uint32_t*>(shared_a);
     const auto* a_words = reinterpret_cast<const uint32_t*>(a);
     for (unsigned word = tid; word < MT * row_words; word += threads) {
@@ -365,15 +367,21 @@ inline void launch_g1_crt_transposed(unsigned W, unsigned M,
 }
 
 // Full-size MT32 production launcher; MT16/default fixtures stay intact.
+// Full defaults preserve the existing ABI. The output pipeline supplies
+// 512-block ranges beginning at multiples of 512: tile*256+id then
+// covers one contiguous 16,384-coefficient natural-output interval.
 inline void launch_g1_crt32_transposed(unsigned W, unsigned M,
                                        const uint8_t* a_t, const uint8_t* b,
                                        const float* invp, const uint32_t* q,
                                        uint32_t gap, uint32_t* out,
-                                       cudaStream_t stream = nullptr) {
+                                       cudaStream_t stream = nullptr,
+                                       unsigned block_begin = 0,
+                                       unsigned block_count = 0) {
+    const unsigned blocks = block_count ? block_count : M / 32;
     if (W == 1747 && M == 65536)
-        g1_crt32<1747, 55, 114, 480, true><<<M / 32, 224, 0, stream>>>(a_t, b, invp, q, gap, out);
+        g1_crt32<1747, 55, 114, 480, true><<<blocks, 224, 0, stream>>>(a_t, b, invp, q, gap, out, block_begin);
     else if (W == 868 && M == 32768)
-        g1_crt32<868, 28, 57, 256, true><<<M / 32, 224, 0, stream>>>(a_t, b, invp, q, gap, out);
+        g1_crt32<868, 28, 57, 256, true><<<blocks, 224, 0, stream>>>(a_t, b, invp, q, gap, out, block_begin);
     else
         throw std::runtime_error("ByteCRT MT32 G1 requires full staged geometries");
 }
