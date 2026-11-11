@@ -1,0 +1,31 @@
+{
+  "compiler": "16.2.1 20260810",
+  "evidence": "CPU vector construction; memcpy emulates overwrite",
+  "gpu_transfers_measured": false,
+  "points": [
+    {
+      "n": 65536,
+      "limbs": 55,
+      "bytes": 14417920,
+      "resized_opaque_overwrite_median_us": 1467.57,
+      "range_construct_median_us": 863.516,
+      "samples_each": 20,
+      "all_words_equal": true,
+      "cpu_model_delta_us": 604.054
+    },
+    {
+      "n": 32768,
+      "limbs": 28,
+      "bytes": 3670016,
+      "resized_opaque_overwrite_median_us": 159.52,
+      "range_construct_median_us": 96.1115,
+      "samples_each": 20,
+      "all_words_equal": true,
+      "cpu_model_delta_us": 63.408500000000004
+    }
+  ],
+  "platform": "Linux-7.2.11-arch1-1-x86_64-with-glibc2.44",
+  "machine": "x86_64",
+  "target_gpu_runs": 0,
+  "official_whole_call_runs": 0
+}

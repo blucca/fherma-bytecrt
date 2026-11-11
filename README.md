@@ -56,3 +56,17 @@ The prime product preserves two centered-CRT guard bits. Relative to a conservat
 The next artifact is one fused MMA/CRT kernel with a coalesced output handoff, integrated with an exact RNS NTT under the [FHERMA challenge's](https://www.fherma.io/kernels/polynomial-multiplication/challenges/polynomial-multiplication-2025) complete timing boundary. Its competitive family already includes RNS NTT and tensor-core CRT; improvement must be measured on the target runner.
 
 The benchmark reference is the [official cuPQC example](https://github.com/fherma-ai/polynomial-mult-cupqc-example), with the generated host interface. Original reference code: Apache-2.0.
+
+## Host output construction probe
+
+The generated official interface returns `std::vector<uint32_t>`, and only `fherma_run` is timed. A CPU-only probe compares `resize` followed by an opaque overwrite with direct range construction from an already available staging buffer. Both produce identical complete output vectors.
+
+```sh
+mkdir -p temp
+g++ -std=c++17 -O3 -fno-lto host-output-check.cpp -o temp/host-check
+./temp/host-check
+```
+
+GCC 16.2.1, Linux x86_64: 20 interleaved samples per method after 3 warm-ups. Local medians were 1.468 ms / 0.864 ms for N65536/L55 and 0.160 ms / 0.096 ms for N32768/L28. The overwrite is CPU memcpy; these measurements cover vector construction. GPU DMA, pinned staging and official whole-call measurements have their own target-run validation.
+
+A concrete native experiment is fixed pinned D2H staging plus range construction, with the entire DMA/copy/construction inside the timer. Its acceptance is unchanged exact output and measured complete-call improvement.
