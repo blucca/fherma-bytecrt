@@ -17,6 +17,7 @@
 #include <vector>
 
 void bytecrt_pack_inputs(uint32_t*, const uint32_t*, const uint32_t*, std::size_t);
+bool bytecrt_input_stream_enabled();
 
 namespace {
 
@@ -188,6 +189,8 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaGetDeviceProperties(&props, 0), "device properties");
     std::fprintf(stderr, "ByteCRT full setup N=%u W=%u L=%u P=%u gap=%u: %s, SMs=%d\n",
                  p.N, p.W, p.L, s->plan.pcount, s->plan.gap, props.name, props.multiProcessorCount);
+    std::fprintf(stderr, "ByteCRT host input-pack backend=%s\n",
+                 bytecrt_input_stream_enabled() ? "avx512-nt" : "libc");
     return s.release();
 }
 

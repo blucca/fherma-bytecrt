@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Measured complete result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.594 ms / 1.070 ms** ([C10 result](native-smoke/native-c10-result.json)), including all input/output conversion and transfers. The primary call improves 60.7% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
+**Measured complete result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.099 ms / 0.963 ms** ([C12 result](native-smoke/native-c12-result.json)), including all input/output conversion and transfers. The primary call improves 68.2% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
 
 ```sh
 python3 -B reference.py
@@ -127,4 +127,8 @@ C11 also packs inputs once into fixed write-combined mapped pinned memory and gi
 
 ## Fixed MT32 dual MMA
 
-C12 doubles each encoder/CRT tile from 16 to 32 coefficients. Two m16 unsigned-MMA accumulator sets reuse every B0/B1 load; total arithmetic and global byte extents stay fixed, while CTA count and group barriers halve. The original MT16 fixture route remains available. [Source-extracted CPU checks](native-smoke/mt32-cpu-result.json) cover second-row reducers, shared layouts and natural/transposed output indexes. C12 retains cached pinned input with one bulk H2D and the proven FP32 alpha.
+C12 doubles each encoder/CRT tile from 16 to 32 coefficients. Two m16 unsigned-MMA accumulator sets reuse every B0/B1 load; total arithmetic and global byte extents stay fixed, while CTA count and group barriers halve. The original MT16 fixture route remains available. [Source-extracted CPU checks](native-smoke/mt32-cpu-result.json) cover second-row reducers, shared layouts and natural/transposed output indexes. [C12](native-smoke/native-c12-result.json) passes both complete outputs at three fresh seeds per point, with medians 2.099 ms / 0.963 ms. C12 retains cached pinned input with one bulk H2D and the proven FP32 alpha.
+
+## Non-temporal CPU input packing
+
+C13 keeps the twelve disjoint input tasks and uses AVX512 aligned streaming stores on supporting CPUs. Prefix/tail byte copies preserve arbitrary alignment and lengths; each worker drains its stores before the completion barrier and the one bulk H2D. The fixed setup reports the actual CPU backend. [CPU preflight](native-smoke/input-stream-cpu-result.json) passes the complete fallback outputs and target-ISA compilation; the native benchmark selects this candidate by exact output and complete-call latency.

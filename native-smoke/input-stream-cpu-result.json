@@ -1,0 +1,106 @@
+{
+  "status": "PREPARED_CPU_GATE_PASS",
+  "patch": "temp/round537/input-stream/io-copy.patch",
+  "candidate": "temp/round537/input-stream/io-copy.cpp",
+  "check_source": "temp/round537/input-stream/check.cpp",
+  "check_output": "temp/round537/input-stream/check.json",
+  "compiler": "g++ (GCC) 16.2.1 20260810",
+  "compile_flags": [
+    "-O3",
+    "-std=c++17",
+    "-fopenmp",
+    "-Wall",
+    "-Wextra",
+    "-Werror"
+  ],
+  "compile_scope": "Default x86_64 ISA; AVX512F helper isolated by function target attribute",
+  "compile_status": "PASS",
+  "assembly_status": "PASS: unaligned 64-byte vmovdqu64, vmovntdq, worker sfence",
+  "patch_apply_check": "PASS",
+  "product_state": "Baseline SHA256 preserved",
+  "source_lines": {
+    "baseline": 25,
+    "candidate": 70,
+    "diff_added": 55,
+    "diff_removed": 10
+  },
+  "invariants": {
+    "tasks": 12,
+    "chunks_per_operand": 6,
+    "worker_cap": 12,
+    "worker_count_formula": "min(12, omp_get_num_procs())",
+    "operand_sources": "Separate a/b owner arrays retained",
+    "destination": "a[0:words] then b[0:words]",
+    "alignment_prefix_max_bytes": 63,
+    "stream_block_bytes": 64,
+    "source_load": "unaligned AVX512F",
+    "stream_destination": "64-byte aligned",
+    "tail": "std::memcpy, fewer than 64 bytes",
+    "worker_completion": "sfence after assigned tasks, before implicit OMP region barrier",
+    "runtime_gate": "x86_64/i386 GNU/Clang plus __builtin_cpu_supports(\"avx512f\")"
+  },
+  "local_cpu": "AMD EPYC 7K62 48-Core Processor, 4 vCPU, x86_64",
+  "actual_execution_scope": {
+    "pack_branch": "libc_fallback",
+    "runtime_avx512f": false,
+    "avx512_intrinsics_executed_cases": 0,
+    "requested_workers": 4,
+    "actual_workers": 4,
+    "small_points": [
+      0,
+      1,
+      2,
+      5,
+      6,
+      7,
+      11,
+      13,
+      31,
+      65,
+      257
+    ],
+    "full_points": [
+      3604480,
+      917504
+    ],
+    "packed_words_asserted": 9044764,
+    "full_pack_calls_per_point": 1,
+    "timed_samples": 0,
+    "GPU_executions": 0
+  },
+  "avx512_cpu_gate_prepared_scope": {
+    "CPUID_condition": "AVX512F supported with OS state",
+    "direct_serial_cases": 512,
+    "destination_byte_offsets": [
+      0,
+      63
+    ],
+    "byte_lengths": [
+      0,
+      1,
+      63,
+      64,
+      65,
+      127,
+      128,
+      129
+    ],
+    "source_byte_offset": 3,
+    "checks": "std::memcpy reference, all destination guards, source unchanged"
+  },
+  "performance_context": {
+    "inherited_C10_whole_us": 2593.996,
+    "inherited_C10_pack_us": 493.906,
+    "main_packed_bytes": 28835840,
+    "scenario_pack_reduction_percent": [
+      20,
+      30
+    ],
+    "scenario_whole_reduction_us": [
+      98.7812,
+      148.1718
+    ],
+    "gain_condition": "Existing libc destination writes have substantial RFO traffic",
+    "target_measurement_status": "Xeon 6776P candidate staged for existing gate"
+  }
+}
