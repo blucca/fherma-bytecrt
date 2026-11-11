@@ -1,7 +1,7 @@
 // ByteCRT exact unsigned-byte tensor RNS input encoding, Apache-2.0.
 #pragma once
 
-#include "rns-encode.cuh"
+#include <cuda_runtime.h>
 #include <cstddef>
 #include <cstdint>
 #include <stdexcept>
@@ -9,36 +9,27 @@
 
 namespace bytecrt {
 
-// Fixed setup only. B has 7*P column-major byte columns, each K bytes, where
-// K=ceil(4*L/32)*32 (224 or 128). For w_l=2^(32*l) mod p[j], column 7*j+d
-// contains byte_(d-i)(w_l) at k=4*l+i, with zero for byte indices outside 0..3.
-// Consequently its dot with one input byte row is product digit sum d.
+// Fixed setup only. B has 4*P column-major byte columns, each K bytes.
+// At input byte k, weight=2^(8*k) mod p[j]; column 4*j+d stores byte_d(weight).
+// This reduces powers before byte expansion: x=sum_k inputByte[k]*weight[k].
 inline std::vector<uint8_t> make_encode_b(
-    unsigned L, unsigned P, const std::vector<uint32_t>& primes,
-    const std::vector<uint32_t>& powers_mont) {
+    unsigned L, unsigned P, const std::vector<uint32_t>& primes) {
     if (!((L == 55 && P == 114) || (L == 28 && P == 57)))
         throw std::runtime_error("ByteCRT tensor encoding requires (L,P)=(55,114) or (28,57)");
-    if (primes.size() != P || powers_mont.size() != std::size_t{P} * L)
-        throw std::runtime_error("ByteCRT tensor encoding setup array shape");
+    if (primes.size() != P)
+        throw std::runtime_error("ByteCRT tensor encoding prime array shape");
     const unsigned K = (4 * L + 31) / 32 * 32;
-    std::vector<uint8_t> b(std::size_t{7} * P * K, 0);
+    std::vector<uint8_t> b(std::size_t{4} * P * K, 0);
     for (unsigned j = 0; j < P; ++j) {
         const uint32_t p = primes[j];
         if (p <= 1 || !(p & 1) || p >= (uint32_t{1} << 31))
             throw std::runtime_error("ByteCRT tensor encoding requires odd 1<p<2^31");
-        uint32_t inverse = 1;
-        for (unsigned step = 0; step < 5; ++step) inverse *= 2u - p * inverse;
-        const uint32_t neg_inverse = 0u - inverse;
-        for (unsigned limb = 0; limb < L; ++limb) {
-            const uint32_t power = powers_mont[std::size_t{j} * L + limb];
-            if (power >= p)
-                throw std::runtime_error("ByteCRT tensor encoding Montgomery power must be canonical");
-            const uint32_t weight = mont_mul_word(power, 1, p, neg_inverse);
-            for (unsigned d = 0; d < 7; ++d)
-                for (unsigned i = 0; i < 4; ++i)
-                    if (d >= i && d - i < 4)
-                        b[(std::size_t{7} * j + d) * K + 4 * limb + i] =
-                            static_cast<uint8_t>(weight >> (8 * (d - i)));
+        uint32_t power = 1;
+        for (unsigned byte = 0; byte < 4 * L; ++byte) {
+            for (unsigned d = 0; d < 4; ++d)
+                b[(std::size_t{4} * j + d) * K + byte] =
+                    static_cast<uint8_t>(power >> (8 * d));
+            power = uint32_t(uint64_t{power} * 256 % p);
         }
     }
     return b;
@@ -46,56 +37,41 @@ inline std::vector<uint8_t> make_encode_b(
 
 namespace detail {
 
-// x=sum_l input_l*(2^(32*l) mod p) < L*2^32*p < 2^69.
-// Seven nonnegative byte sums reconstruct x as three base-2^32 words.
-// mu=floor(2^64/p)=UINT64_MAX/p for odd p>1. The low-word Barrett estimate
-// undershoots by at most one, giving remainder<2*p. The high word is <28;
-// multiplying by powers_mont[j*L+2] returns high*2^64 mod p.
+// x < 4*L*255*p < 2^47. Four exact byte-dot sums reconstruct this u64.
+// mu=floor(2^64/p)=UINT64_MAX/p for odd p>1; qhat undershoots by at most one.
+// One conditional subtraction produces the same canonical coefficient mod p.
 __device__ __forceinline__ uint32_t encode_mma_reduce(
-    const int32_t* sums, uint32_t p, uint32_t neg_inverse,
-    uint32_t r2_mont, uint64_t mu) {
-    const uint64_t lo = uint64_t{static_cast<uint32_t>(sums[0])} +
-                        (uint64_t{static_cast<uint32_t>(sums[1])} << 8) +
-                        (uint64_t{static_cast<uint32_t>(sums[2])} << 16) +
-                        (uint64_t{static_cast<uint32_t>(sums[3])} << 24);
-    const uint64_t hi = (lo >> 32) + uint64_t{static_cast<uint32_t>(sums[4])} +
-                        (uint64_t{static_cast<uint32_t>(sums[5])} << 8) +
-                        (uint64_t{static_cast<uint32_t>(sums[6])} << 16);
-    const uint32_t word0 = static_cast<uint32_t>(lo);
-    const uint32_t word1 = static_cast<uint32_t>(hi);
-    const uint32_t high = static_cast<uint32_t>(hi >> 32);
-    const uint64_t lo64 = uint64_t{word0} | (uint64_t{word1} << 32);
-    const uint64_t qhat = __umul64hi(lo64, mu);
-    const uint64_t remainder = lo64 - qhat * p;
-    const uint32_t low_residue = static_cast<uint32_t>(
-        remainder >= p ? remainder - p : remainder);
-    const uint32_t high_residue = mont_mul_word(high, r2_mont, p, neg_inverse);
-    // Both residues are canonical and p<2^31; their sum fits u32.
-    const uint32_t sum = low_residue + high_residue;
-    return sum >= p ? sum - p : sum;
+    const int32_t* sums, uint32_t p, uint64_t mu) {
+    const uint64_t x = uint64_t{static_cast<uint32_t>(sums[0])} +
+                       (uint64_t{static_cast<uint32_t>(sums[1])} << 8) +
+                       (uint64_t{static_cast<uint32_t>(sums[2])} << 16) +
+                       (uint64_t{static_cast<uint32_t>(sums[3])} << 24);
+    const uint64_t qhat = __umul64hi(x, mu);
+    const uint64_t remainder = x - qhat * p;
+    return static_cast<uint32_t>(remainder >= p ? remainder - p : remainder);
 }
 
 }  // namespace detail
 
 // MT=16, NT=56, seven full warps: the register gather/scatter follows G1's
 // m16n8k32 unsigned-byte layout. Each CTA loads its input tile once, then
-// iterates over eight primes (seven byte-product digits each) per group.
+// iterates over fourteen primes (four byte-power digits each) per group.
 template <unsigned L, unsigned P, unsigned Kpad, bool Transposed = false>
 __global__ void encode_mma16(unsigned N,
                             const uint32_t* __restrict__ inputs,
                             const uint8_t* __restrict__ b,
                             const uint32_t* __restrict__ primes,
-                            const uint32_t* __restrict__ neg_inverses,
-                            const uint32_t* __restrict__ powers_mont,
                             const uint64_t* __restrict__ mu,
                             uint32_t* __restrict__ ab) {
     static_assert((L == 55 && P == 114 && Kpad == 224) ||
                   (L == 28 && P == 57 && Kpad == 128), "tensor RNS geometry");
     static_assert(4 * L * 255 * 255 < (uint32_t{1} << 31), "exact s32 byte dots");
     constexpr unsigned MT = 16, NT = 56, threads = 224;
-    constexpr unsigned groups = (P + 7) / 8;
-    constexpr unsigned word_stride = Kpad / 4;
-    __shared__ __align__(16) uint8_t shared_a[MT][Kpad];
+    constexpr unsigned groups = (P + 13) / 14;
+    constexpr unsigned shared_stride = Kpad + 16;
+    constexpr unsigned word_stride = shared_stride / 4;
+    // +16 bytes makes each MMA half-row gather bank-distinct at both widths.
+    __shared__ __align__(16) uint8_t shared_a[MT][shared_stride];
     __shared__ int32_t shared_c[MT][NT + 1];
 
     const unsigned tid = threadIdx.x;
@@ -130,7 +106,7 @@ __global__ void encode_mma16(unsigned N,
             const uint32_t a2 = *reinterpret_cast<const uint32_t*>(shared_a[g] + k + k_lane + 16);
             const uint32_t a3 = *reinterpret_cast<const uint32_t*>(shared_a[g + 8] + k + k_lane + 16);
             uint32_t b0 = 0, b1 = 0;
-            if (b_col < 7 * P) {
+            if (b_col < 4 * P) {
                 const uint8_t* column = b + std::size_t{b_col} * Kpad + k + k_lane;
                 b0 = *reinterpret_cast<const uint32_t*>(column);
                 b1 = *reinterpret_cast<const uint32_t*>(column + 16);
@@ -148,16 +124,15 @@ __global__ void encode_mma16(unsigned N,
         shared_c[g + 8][c_col + 1] = c3;
         __syncthreads();
 
-        if (tid < 128) {
+        if (tid < threads) {
             const unsigned local_prime = tid / MT;
             const unsigned row = first_row + tid % MT;
             const unsigned coefficient = Transposed ? id + row * transpose_m : row;
-            const unsigned prime = group * 8 + local_prime;
+            const unsigned prime = group * 14 + local_prime;
             if (coefficient < N && prime < P) {
-                const int32_t* sums = shared_c[tid % MT] + 7 * local_prime;
+                const int32_t* sums = shared_c[tid % MT] + 4 * local_prime;
                 const uint32_t residue = detail::encode_mma_reduce(
-                    sums, primes[prime], neg_inverses[prime],
-                    powers_mont[std::size_t{prime} * L + 2], mu[prime]);
+                    sums, primes[prime], mu[prime]);
                 const unsigned destination = Transposed ? id * (N / transpose_m) + row : coefficient;
                 ab[(std::size_t{operand} * P + prime) * N + destination] = residue;
             }
@@ -168,15 +143,13 @@ __global__ void encode_mma16(unsigned N,
 }
 
 // Inputs are A then B, coefficient-major [2][N][L] little-endian u32 limbs.
-// b is make_encode_b's fixed byte matrix; mu[j]=UINT64_MAX/p[j]; the other
-// setup contracts match launch_encode. Output is compact canonical [2][P][N].
+// b is make_encode_b's fixed byte-power matrix; mu[j]=UINT64_MAX/p[j].
+// Output is compact canonical [2][P][N].
 // The asynchronous launcher uses the caller's stream and CUDA status checks.
 inline void launch_encode_mma(unsigned N, unsigned L, unsigned P,
                                const uint32_t* d_inputs,
                                const uint8_t* d_b,
                                const uint32_t* d_p,
-                               const uint32_t* d_neg_inverse,
-                               const uint32_t* d_powers_mont,
                                const uint64_t* d_mu,
                                uint32_t* d_ab,
                                cudaStream_t stream = nullptr) {
@@ -185,10 +158,10 @@ inline void launch_encode_mma(unsigned N, unsigned L, unsigned P,
     const dim3 grid((N - 1) / 16 + 1, 2);
     if (L == 55 && P == 114)
         encode_mma16<55, 114, 224><<<grid, 224, 0, stream>>>(
-            N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab);
+            N, d_inputs, d_b, d_p, d_mu, d_ab);
     else if (L == 28 && P == 57)
         encode_mma16<28, 57, 128><<<grid, 224, 0, stream>>>(
-            N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab);
+            N, d_inputs, d_b, d_p, d_mu, d_ab);
     else
         throw std::runtime_error("ByteCRT tensor encoding requires (L,P)=(55,114) or (28,57)");
 }
@@ -200,18 +173,16 @@ inline void launch_encode_mma_transposed(unsigned N, unsigned L, unsigned P,
                                           const uint32_t* d_inputs,
                                           const uint8_t* d_b,
                                           const uint32_t* d_p,
-                                          const uint32_t* d_neg_inverse,
-                                          const uint32_t* d_powers_mont,
                                           const uint64_t* d_mu,
                                           uint32_t* d_ab_t,
                                           cudaStream_t stream = nullptr) {
     const dim3 grid(N / 16, 2);
     if (N == 65536 && L == 55 && P == 114)
         encode_mma16<55, 114, 224, true><<<grid, 224, 0, stream>>>(
-            N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab_t);
+            N, d_inputs, d_b, d_p, d_mu, d_ab_t);
     else if (N == 32768 && L == 28 && P == 57)
         encode_mma16<28, 57, 128, true><<<grid, 224, 0, stream>>>(
-            N, d_inputs, d_b, d_p, d_neg_inverse, d_powers_mont, d_mu, d_ab_t);
+            N, d_inputs, d_b, d_p, d_mu, d_ab_t);
     else
         throw std::runtime_error("ByteCRT transposed tensor encoding requires full staged geometries");
 }

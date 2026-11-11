@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.748 ms / 1.168 ms** ([C8 result](native-smoke/native-c8-result.json)), including all input/output conversion and transfers. The primary call improves 58.4% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
+**Measured complete result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.748 ms / 1.168 ms** ([C8 result](native-smoke/native-c8-result.json)), including all input/output conversion and transfers. The primary call improves 58.4% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
 
 ```sh
 python3 -B reference.py
@@ -111,4 +111,10 @@ The next complete native method writes RNS inputs directly in staged `[prime][id
 
 ## Bounded parallel standard-vector copy
 
-[C8](native-smoke/native-c8-result.json) preserves standard vector allocation and ownership, and uses GNU host-link wrappers to copy disjoint ranges of at least 8 MiB in twelve OpenMP chunks. Overlapping moves and smaller ranges stay with libc. Both full outputs pass 3/3 fresh seeds; primary whole-call median improves 26.4% from C7. The auxiliary remains on the small-copy path and measures 1.168 ms, versus C7’s 1.146 ms. The next candidate changes only the fixed write-only input staging allocation to CUDA write-combined memory, retaining all per-input work inside the timer.
+[C8](native-smoke/native-c8-result.json) preserves standard vector allocation and ownership, and uses GNU host-link wrappers to copy disjoint ranges of at least 8 MiB in twelve OpenMP chunks. Overlapping moves and smaller ranges stay with libc. Both full outputs pass 3/3 fresh seeds; primary whole-call median improves 26.4% from C7. The auxiliary remains on the small-copy path and measures 1.168 ms, versus C7’s 1.146 ms. [C9](native-smoke/native-c9-result.json) changes the fixed write-only input allocation to CUDA write-combined memory, passes both full outputs and measures 2.775 ms / 1.184 ms. The next method retains cached pinned input.
+
+## Four-column byte powers and coalesced inverse/CRT
+
+The next exact input method uses `w_k = 2^(8*k) mod p` for each input byte position. Four unsigned byte-dot sums reconstruct `x = sum(inputByte[k]*w_k) < 2^47`; one 64-bit Barrett reduction returns the canonical wide coefficient modulo p. This reduces MMA groups from 15 to 9 at the primary point and from 8 to 5 at the auxiliary point. [Source-extracted CPU proof](native-smoke/rns-byte-power-cpu-result.json) covers all actual primes and independent full-wide modulo.
+
+The final NTT now writes weighted residues contiguously in `[id][primeWord][i]` order. G1 restores the shared coefficient rows and writes the original natural output. Sixteen extra shared bytes per row make the unsigned-MMA A gathers bank-distinct at both widths. [Full-size CPU boundary/fixture proof](native-smoke/weighted-boundary-cpu-result.json) records the exact source scope. C10 target compilation, all-coefficient validation and complete-call measurement follow this combined candidate.

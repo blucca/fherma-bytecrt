@@ -1,0 +1,27 @@
+{
+  "status": "PASS",
+  "fixed_factor_words": 9338880,
+  "canonical_weighted_checks": 18677760,
+  "G1_shared_copy_words": 19922944,
+  "G1_full_output_words": 9043968,
+  "fixture_output_words": 11952,
+  "fragment_words": 1657152,
+  "fixture_tile_executions": 18,
+  "distinct_real_fixture_coefficients": 36,
+  "distinct_padded_fixture_rows": 60,
+  "CUDA_compiled": false,
+  "GPU_runs": 0,
+  "A_register_bank_model": {
+    "main": {
+      "old_max_distinct_words_per_bank": 2,
+      "new_max_distinct_words_per_bank": 1,
+      "shared_stride_words": 124
+    },
+    "aux": {
+      "old_max_distinct_words_per_bank": 8,
+      "new_max_distinct_words_per_bank": 1,
+      "shared_stride_words": 68
+    }
+  },
+  "scope": "CPU source-extracted producer, fixed setup, G1 copy/alpha/fragment/scatter/carry/reduce/output; collective MMA represented by exact byte dots"
+}

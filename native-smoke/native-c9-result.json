@@ -1,0 +1,139 @@
+{
+  "status": "PASS",
+  "source_commit": "5587c674519703770c1c8e556cbd70dcc74a25fa",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.002764853,
+        "median": 0.002775401,
+        "mean": 0.0027957966666666664,
+        "max": 0.002847136
+      },
+      "fresh_seeds": [
+        10,
+        26,
+        34
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.001119706,
+        "median": 0.001183786,
+        "mean": 0.0011655966666666666,
+        "max": 0.001193298
+      },
+      "fresh_seeds": [
+        10,
+        40,
+        85
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 398.464,
+            "forward1": 154.56,
+            "fused-middle": 102.112,
+            "inverse-weighted": 197.792,
+            "G1": 299.424,
+            "H2D": 1101.344
+          },
+          "host_us": {
+            "input-pack": 2314.652,
+            "H2D+product": 2282.933,
+            "D2H": 267.703,
+            "output-construct": 669.294
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 391.424,
+            "forward1": 149.472,
+            "fused-middle": 98.304,
+            "inverse-weighted": 194.56,
+            "G1": 296.992,
+            "H2D": 867.904
+          },
+          "host_us": {
+            "input-pack": 533.854,
+            "H2D+product": 2019.849,
+            "D2H": 262.555,
+            "output-construct": 154.48
+          }
+        }
+      ]
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 124.448,
+            "forward1": 45.12,
+            "fused-middle": 31.68,
+            "inverse-weighted": 53.472,
+            "G1": 104.48,
+            "H2D": 428.064
+          },
+          "host_us": {
+            "input-pack": 1289.253,
+            "H2D+product": 815.599,
+            "D2H": 138.271,
+            "output-construct": 677.672
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 126.944,
+            "forward1": 40.928,
+            "fused-middle": 24.608,
+            "inverse-weighted": 51.168,
+            "G1": 100.384,
+            "H2D": 231.84
+          },
+          "host_us": {
+            "input-pack": 269.923,
+            "H2D+product": 594.513,
+            "D2H": 77.251,
+            "output-construct": 240.628
+          }
+        }
+      ]
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T11:04:27.389Z",
+  "measurement_scope": "complete native diagnostic, 3 fresh seeds per full point",
+  "changes": "One fixed input allocation changed to cudaHostAllocWriteCombined; complete timed call otherwise identical to C8"
+}

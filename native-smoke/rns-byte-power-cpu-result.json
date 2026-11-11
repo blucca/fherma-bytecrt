@@ -1,0 +1,40 @@
+{
+  "status": "PASS",
+  "scope": "source-extracted fixed byte powers and u64 reducer; independent BigInt coefficient modulo and locked MMA fragments",
+  "points": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "L": 55,
+      "P": 114,
+      "K": 224,
+      "B_bytes": 102144,
+      "groups": 9,
+      "old_groups": 15,
+      "real_prime_coefficients": 912,
+      "shared_A_bytes": 3840,
+      "A_gather_bank_multiplicity": 1
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "L": 28,
+      "P": 57,
+      "K": 128,
+      "B_bytes": 29184,
+      "groups": 5,
+      "old_groups": 8,
+      "real_prime_coefficients": 456,
+      "shared_A_bytes": 2304,
+      "A_gather_bank_multiplicity": 1
+    }
+  ],
+  "record_cases": 2736,
+  "fragment_words": 3584,
+  "conditional_subtractions": 171,
+  "largest_real_x_bits": 46,
+  "CUDA_compilations": 0,
+  "GPU_executions": 0,
+  "source_setup_B_bytes": 131328,
+  "source_reducer_cases": 2736
+}

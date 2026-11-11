@@ -46,8 +46,6 @@ struct State {
     uint64_t* encode_mu = nullptr;
     uint32_t* q = nullptr;
     uint32_t* primes = nullptr;
-    uint32_t* neg_inverses = nullptr;
-    uint32_t* powers_mont = nullptr;
     uint32_t* n_inverse = nullptr;
     uint8_t* b_matrix = nullptr;
     double* invp = nullptr;
@@ -110,7 +108,7 @@ void product(State& s, bool profile) {
     constexpr size_t last = cupqc::inv_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     mark(s, profile, 0);
     bytecrt::launch_encode_mma_transposed(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
-                                           s.neg_inverses, s.powers_mont, s.encode_mu, s.ab_t);
+                                           s.encode_mu, s.ab_t);
     check(cudaGetLastError(), "coefficient RNS encoding");
     mark(s, profile, 1);
     forward_first_coalesced<N><<<dim3(kSubSize, 2 * P), kThreads, first>>>(
@@ -120,11 +118,11 @@ void product(State& s, bool profile) {
     fused_middle<N><<<dim3(K, P), kThreads, middle>>>(s.ab, s.c, s.tw, s.inv_tw, s.constants, P);
     check(cudaGetLastError(), "fused spectral middle");
     mark(s, profile, 3);
-    bytecrt::inverse_weighted<N, P, Kpad><<<dim3(kSubSize, P), kThreads, last>>>(
+    bytecrt::inverse_weighted<N, P, Kpad, true><<<dim3(kSubSize, P), kThreads, last>>>(
         s.c, s.weighted, s.inv_tw, s.untwist_crt, s.constants, s.n_inverse);
     check(cudaGetLastError(), "inverse weighted packing");
     mark(s, profile, 4);
-    bytecrt::launch_g1_crt(s.plan.w, N, reinterpret_cast<const uint8_t*>(s.weighted),
+    bytecrt::launch_g1_crt_transposed(s.plan.w, N, reinterpret_cast<const uint8_t*>(s.weighted),
                          s.b_matrix, s.invp, s.q, s.plan.gap, s.out);
     check(cudaGetLastError(), "fused byte CRT");
     mark(s, profile, 5);
@@ -148,43 +146,37 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
     check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
-    // CPU write-only staging; CUDA H2D consumes it, and cudaFreeHost handles cleanup.
-    check(cudaHostAlloc(&s->hostinput, 2 * coeffs * sizeof(uint32_t), cudaHostAllocWriteCombined), "allocate pinned input");
-    fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes, s->plan.powers_mont));
+    check(cudaMallocHost(&s->hostinput, 2 * coeffs * sizeof(uint32_t)), "allocate pinned input");
+    fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes));
     std::vector<uint64_t> encode_mu(s->plan.pcount);
     for (unsigned j = 0; j < s->plan.pcount; ++j) encode_mu[j] = UINT64_MAX / s->plan.primes[j];
     fixed_copy(*s, s->encode_mu, encode_mu);
     fixed_copy(*s, s->q, p.q.data);
     fixed_copy(*s, s->primes, s->plan.primes);
-    fixed_copy(*s, s->powers_mont, s->plan.powers_mont);
     fixed_copy(*s, s->n_inverse, s->plan.n_inverse);
     fixed_copy(*s, s->b_matrix, s->plan.b_matrix);
     fixed_copy(*s, s->invp, s->plan.invp);
     std::vector<Constant> constants(s->plan.pcount);
-    std::vector<uint32_t> neg_inverse(s->plan.pcount);
     std::vector<uint32_t> psi(planes), untwist_crt(planes);
     for (unsigned j = 0; j < s->plan.pcount; ++j) {
         const uint32_t prime = s->plan.primes[j];
         constants[j] = Constant(prime);
-        neg_inverse[j] = constants[j].n_dash;
-        if (uint32_t(uint64_t(prime) * neg_inverse[j]) != UINT32_MAX)
+        if (uint32_t(uint64_t(prime) * constants[j].n_dash) != UINT32_MAX)
             throw std::runtime_error("ByteCRT Montgomery inverse");
         const uint32_t r_mod_p = s->plan.powers_mont[size_t(j) * p.L];
         uint32_t forward_power = 1, inverse_power = s->plan.crt_inverse[j];
         const uint32_t inverse_step = bytecrt::rns_detail::pow_mod(s->plan.psi_roots[j], prime - 2, prime);
         for (uint32_t i = 0; i < p.N; ++i) {
-            const size_t index = size_t(j) * p.N + i;
             const size_t psi_index = size_t(j) * p.N +
                 size_t(i % bytecrt::ntt::kSubSize) * (p.N / bytecrt::ntt::kSubSize) +
                 i / bytecrt::ntt::kSubSize;
             psi[psi_index] = uint32_t(uint64_t(forward_power) * r_mod_p % prime); // transposed Montgomery
-            untwist_crt[index] = inverse_power;
+            untwist_crt[psi_index] = inverse_power; // transposed ordinary CRT untwist
             forward_power = uint32_t(uint64_t(forward_power) * s->plan.psi_roots[j] % prime);
             inverse_power = uint32_t(uint64_t(inverse_power) * inverse_step % prime);
         }
     }
     fixed_copy(*s, s->constants, constants);
-    fixed_copy(*s, s->neg_inverses, neg_inverse);
     fixed_copy(*s, s->psi, psi);
     fixed_copy(*s, s->untwist_crt, untwist_crt);
     if (p.N == 65536) initialize_tables<65536>(*s);

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: Apache-2.0
-// Final staged inverse + untwist + CRT inverse + coefficient-major packing.
+// Final staged inverse + untwist + CRT inverse + weighted boundary packing.
 #pragma once
 
 #include "ntt-pipeline.cuh"
@@ -7,7 +7,7 @@
 
 namespace bytecrt {
 
-template<uint32_t N, uint32_t P, uint32_t Kpad>
+template<uint32_t N, uint32_t P, uint32_t Kpad, bool Transposed = false>
 __global__ void inverse_weighted(const uint32_t* c, uint32_t* weighted,
                                 const uint32_t* inv_tw,
                                 const uint32_t* untwist_crt,
@@ -29,9 +29,15 @@ __global__ void inverse_weighted(const uint32_t* c, uint32_t* weighted,
         // s[i] is (negacyclic coefficient * psi^i) in Montgomery form.
         // The ordinary factor psi^-i * inv(P/p) cancels both transforms with
         // one Montgomery product, returning canonical weighted t_j for G1.
-        const uint32_t t = mont_mul_word(s[i], untwist_crt[size_t(prime) * N + coefficient],
-                                        mc.p, mc.n_dash);
-        weighted[size_t(coefficient) * (Kpad / 4) + prime] = t;
+        // Transposed factors use [prime][id][i], just like coalesced psi.
+        // Transposed A uses [id][prime_word][i]; each warp writes 32 words.
+        const size_t factor_index = size_t(prime) * N +
+            (Transposed ? size_t(blockIdx.x) * K + i : coefficient);
+        const size_t destination = Transposed ?
+            (size_t(blockIdx.x) * (Kpad / 4) + prime) * K + i :
+            size_t(coefficient) * (Kpad / 4) + prime;
+        const uint32_t t = mont_mul_word(s[i], untwist_crt[factor_index], mc.p, mc.n_dash);
+        weighted[destination] = t;
     }
     // The alpha word and padding are fixed-zero global storage. G1 creates
     // the input-dependent alpha in its shared copy, without changing this A.

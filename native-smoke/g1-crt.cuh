@@ -3,6 +3,7 @@
 #pragma once
 
 #include <cuda_runtime.h>
+#include <cstddef>
 #include <cstdint>
 #include <stdexcept>
 
@@ -71,8 +72,9 @@ __device__ __forceinline__ void reduce_near_power(uint32_t* digits,
 // A: row-major M*Kpad bytes; each row starts with P weighted canonical u32 terms t_j = c_j * inv(P_j) mod p_j,
 // followed by the overwritten alpha u32 and zero padding. B: 7L column-major
 // byte columns, each Kpad bytes. M is a multiple of 16; grid.x=M/16.
+// Transposed=true selects full-pipeline A_t[id][prime_word][i] instead.
 // Fixed invp[j]=1/p_j and q are setup data. All input-dependent work stays here.
-template <unsigned W, unsigned L, unsigned P, unsigned Kpad>
+template <unsigned W, unsigned L, unsigned P, unsigned Kpad, bool Transposed = false>
 __global__ void g1_crt16(const uint8_t* __restrict__ a,
                         const uint8_t* __restrict__ b,
                         const double* __restrict__ invp,
@@ -85,7 +87,14 @@ __global__ void g1_crt16(const uint8_t* __restrict__ a,
     constexpr unsigned MT = 16, NT = 56, threads = 224;
     constexpr unsigned digit_stride = (L + 2) | 1;
     constexpr unsigned groups = (L + 7) / 8;
-    __shared__ __align__(16) uint8_t shared_a[MT][Kpad];
+    // Four padding words make the m16n8k32 A gather bank-bijective:
+    // stride_words mod 32 is 28 (main) or 4 (aux), bank = g*stride+t.
+    constexpr unsigned row_words = Kpad / 4;
+    constexpr unsigned shared_stride = Kpad + 16;
+    constexpr unsigned shared_word_stride = shared_stride / 4;
+    constexpr unsigned transpose_m = 256;
+    constexpr unsigned transpose_k = W == 1747 ? 256 : 128;
+    __shared__ __align__(16) uint8_t shared_a[MT][shared_stride];
     __shared__ int32_t shared_c[MT][NT + 1];
     __shared__ uint32_t digits[MT][digit_stride];
 
@@ -93,15 +102,26 @@ __global__ void g1_crt16(const uint8_t* __restrict__ a,
     const unsigned lane = tid & 31, warp = tid >> 5;
     const unsigned g = lane >> 2, t = lane & 3;
     const unsigned k_lane = 4 * t;
+    const unsigned id = Transposed ? blockIdx.x % transpose_m : 0;
+    const unsigned first_row = (Transposed ? blockIdx.x / transpose_m : blockIdx.x) * MT;
     auto* shared_words = reinterpret_cast<uint32_t*>(shared_a);
-    const auto* a_words = reinterpret_cast<const uint32_t*>(a) +
-                          blockIdx.x * MT * (Kpad / 4);
-    for (unsigned word = tid; word < MT * (Kpad / 4); word += threads)
-        shared_words[word] = a_words[word];
+    const auto* a_words = reinterpret_cast<const uint32_t*>(a);
+    for (unsigned word = tid; word < MT * row_words; word += threads) {
+        if constexpr (Transposed) {
+            // A_t[id][prime_word][i]. A half-warp reads 16 consecutive i.
+            const unsigned row = word % MT, prime_word = word / MT;
+            shared_words[row * shared_word_stride + prime_word] =
+                a_words[(size_t(id) * row_words + prime_word) * transpose_k + first_row + row];
+        } else {
+            const unsigned row = word / row_words, prime_word = word % row_words;
+            shared_words[row * shared_word_stride + prime_word] =
+                a_words[(size_t(first_row) + row) * row_words + prime_word];
+        }
+    }
     __syncthreads();
 
     if (tid < MT) {
-        uint32_t* terms = shared_words + tid * (Kpad / 4);
+        uint32_t* terms = shared_words + tid * shared_word_stride;
         double alpha_sum = 0.0;
         for (unsigned j = 0; j < P; ++j)
             alpha_sum = __dadd_rn(alpha_sum, __dmul_rn(static_cast<double>(terms[j]), invp[j]));
@@ -166,8 +186,12 @@ __global__ void g1_crt16(const uint8_t* __restrict__ a,
         detail::reduce_near_power<W, L>(digits[tid], q, gap);
     }
     __syncthreads();
-    for (unsigned word = tid; word < MT * L; word += threads)
-        out[blockIdx.x * MT * L + word] = digits[word / L][word % L];
+    for (unsigned word = tid; word < MT * L; word += threads) {
+        const unsigned row = word / L;
+        const unsigned coefficient = Transposed ? id + (first_row + row) * transpose_m
+                                                : first_row + row;
+        out[size_t(coefficient) * L + word % L] = digits[row][word % L];
+    }
 }
 
 inline void launch_g1_crt(unsigned W, unsigned M,
@@ -183,6 +207,23 @@ inline void launch_g1_crt(unsigned W, unsigned M,
         g1_crt16<868, 28, 57, 256><<<M / 16, 224, 0, stream>>>(a, b, invp, q, gap, out);
     else
         throw std::runtime_error("ByteCRT G1 W must be 1747 or 868");
+}
+
+// Full pipeline A_t has shape [256][Kpad/4][N/256] ordinary u32 words.
+// Its prime words are input-dependent; alpha and padding stay fixed zero.
+// Grid order tile*256+id gives each CTA 16 consecutive i for one id, while
+// output coefficient id+i*256 preserves the official natural coefficient ABI.
+inline void launch_g1_crt_transposed(unsigned W, unsigned M,
+                                     const uint8_t* a_t, const uint8_t* b,
+                                     const double* invp, const uint32_t* q,
+                                     uint32_t gap, uint32_t* out,
+                                     cudaStream_t stream = nullptr) {
+    if (W == 1747 && M == 65536)
+        g1_crt16<1747, 55, 114, 480, true><<<M / 16, 224, 0, stream>>>(a_t, b, invp, q, gap, out);
+    else if (W == 868 && M == 32768)
+        g1_crt16<868, 28, 57, 256, true><<<M / 16, 224, 0, stream>>>(a_t, b, invp, q, gap, out);
+    else
+        throw std::runtime_error("ByteCRT transposed G1 requires full staged geometries");
 }
 
 }  // namespace bytecrt
