@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** actual RTX PRO 6000 Blackwell native unsigned MMA, full-width fused G1 CRT and both cuPQC staged NTT sizes pass their independent exact gates. The complete wide-coefficient RNS/NTT/weighted-CRT implementation passes both official-size native outputs in [`native-smoke/`](native-smoke/): an initial one-seed diagnostic measures 6.598 ms / 1.892 ms end-to-end. [Full native result](native-smoke/native-c4-result.json). [C5](native-smoke/native-c5-result.json) preserves exact outputs and improves the complete calls to 4.963 ms / 1.249 ms with pinned D2H staging. Host input/output and the forward boundary remain measured bottlenecks.
+**Current result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **3.733 ms / 1.146 ms** ([C7 result](native-smoke/native-c7-result.json)), including all input/output conversion and transfers. The primary call improves 43.4% from the initial complete implementation. The next measured bottleneck is the returned-vector range copy.
 
 ```sh
 python3 -B reference.py
