@@ -77,7 +77,7 @@ __device__ __forceinline__ void reduce_near_power(uint32_t* digits,
 template <unsigned W, unsigned L, unsigned P, unsigned Kpad, bool Transposed = false>
 __global__ void g1_crt16(const uint8_t* __restrict__ a,
                         const uint8_t* __restrict__ b,
-                        const double* __restrict__ invp,
+                        const float* __restrict__ invp,
                         const uint32_t* __restrict__ q,
                         uint32_t gap,
                         uint32_t* __restrict__ out) {
@@ -122,11 +122,12 @@ __global__ void g1_crt16(const uint8_t* __restrict__ a,
 
     if (tid < MT) {
         uint32_t* terms = shared_words + tid * shared_word_stride;
-        double alpha_sum = 0.0;
+        float alpha_sum = 0.0f;
         for (unsigned j = 0; j < P; ++j)
-            alpha_sum = __dadd_rn(alpha_sum, __dmul_rn(static_cast<double>(terms[j]), invp[j]));
-        // Centered CRT has |x/product|<1/4, with FP64 error inside that margin.
-        terms[P] = __double2uint_rn(alpha_sum);
+            alpha_sum = __fadd_rn(alpha_sum, __fmul_rn(__uint2float_rn(terms[j]), invp[j]));
+        // Centered CRT has |x/product|<1/4. P<=114 gives FP32 RN error
+        // <=P*gamma_(P+4)<0.001, below the nearest-integer margin of 0.25.
+        terms[P] = __float2uint_rn(alpha_sum);
     }
     __syncthreads();
 
@@ -196,7 +197,7 @@ __global__ void g1_crt16(const uint8_t* __restrict__ a,
 
 inline void launch_g1_crt(unsigned W, unsigned M,
                           const uint8_t* a, const uint8_t* b,
-                          const double* invp, const uint32_t* q,
+                          const float* invp, const uint32_t* q,
                           uint32_t gap, uint32_t* out,
                           cudaStream_t stream = nullptr) {
     if (M == 0 || M % 16 != 0)
@@ -215,7 +216,7 @@ inline void launch_g1_crt(unsigned W, unsigned M,
 // output coefficient id+i*256 preserves the official natural coefficient ABI.
 inline void launch_g1_crt_transposed(unsigned W, unsigned M,
                                      const uint8_t* a_t, const uint8_t* b,
-                                     const double* invp, const uint32_t* q,
+                                     const float* invp, const uint32_t* q,
                                      uint32_t gap, uint32_t* out,
                                      cudaStream_t stream = nullptr) {
     if (W == 1747 && M == 65536)

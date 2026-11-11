@@ -1,0 +1,30 @@
+{
+  "status": "PASS",
+  "scope": "all valid centered CRT coefficients under retained product guard; source-extracted FP32 alpha fixture checks",
+  "proof": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "P": 114,
+      "u": "1/16777216",
+      "absolute_error_bound": 0.0008018073209085385,
+      "nearest_integer_margin": 0.25,
+      "all_valid_coefficients": true
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "P": 57,
+      "u": "1/16777216",
+      "absolute_error_bound": 0.00020724610340668606,
+      "nearest_integer_margin": 0.25,
+      "all_valid_coefficients": true
+    }
+  ],
+  "source_fixture_cases": 64,
+  "gaps_per_shape": 4,
+  "fixture_boundaries": "0,+1,-1,+N(q-1)^2,-N(q-1)^2,three random signed values",
+  "fixed_reciprocal_type": "float, RN conversion of original double 1/p at init",
+  "CUDA_compilations": 0,
+  "GPU_executions": 0
+}

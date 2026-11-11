@@ -1,0 +1,17 @@
+{
+  "status": "PASS",
+  "scope": "fixed WC|Mapped hostinput / device alias / explicit input H2D removal",
+  "allocation_and_mapping_in_fixed_setup": true,
+  "input_device_allocation_removed": true,
+  "input_H2D_copies_per_call": 0,
+  "cpu_pack_per_call_retained": true,
+  "profile_events_sync_and_output_retained": true,
+  "mapped_owner": "hostinput; cudaFreeHost exactly once",
+  "mapped_device_alias": "inputs; outside State.allocations",
+  "input_read_expression_count": 1,
+  "input_shared_load_before_prime_groups": true,
+  "prior_full_pack_gate_reused": "check-result.json",
+  "full_pack_CPU_gate_reruns": 0,
+  "new_performance_measurements": 0,
+  "GPU_executions": 0
+}

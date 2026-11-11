@@ -48,7 +48,7 @@ struct State {
     uint32_t* primes = nullptr;
     uint32_t* n_inverse = nullptr;
     uint8_t* b_matrix = nullptr;
-    double* invp = nullptr;
+    float* invp = nullptr;
     Constant* constants = nullptr;
     std::vector<void*> allocations;
     std::array<cudaEvent_t, 6> events{};
@@ -136,7 +136,6 @@ void* fherma_init(const fherma::Point& p) {
     if (p.L != s->plan.l) throw std::runtime_error("ByteCRT point L mismatch");
     const size_t coeffs = size_t(p.N) * p.L;
     const size_t planes = size_t(p.N) * s->plan.pcount;
-    allocate(*s, s->inputs, 2 * coeffs);
     allocate(*s, s->ab, 2 * planes);
     allocate(*s, s->ab_t, 2 * planes);
     allocate(*s, s->c, planes);
@@ -146,7 +145,9 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
     check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
-    check(cudaMallocHost(&s->hostinput, 2 * coeffs * sizeof(uint32_t)), "allocate pinned input");
+    // CPU write-only mapped staging; encode reads its device alias; cudaFreeHost owns it.
+    check(cudaHostAlloc(&s->hostinput, 2 * coeffs * sizeof(uint32_t), cudaHostAllocWriteCombined | cudaHostAllocMapped), "allocate pinned input");
+    check(cudaHostGetDevicePointer(reinterpret_cast<void**>(&s->inputs), s->hostinput, 0), "map pinned inputs");
     fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes));
     std::vector<uint64_t> encode_mu(s->plan.pcount);
     for (unsigned j = 0; j < s->plan.pcount; ++j) encode_mu[j] = UINT64_MAX / s->plan.primes[j];
@@ -155,7 +156,8 @@ void* fherma_init(const fherma::Point& p) {
     fixed_copy(*s, s->primes, s->plan.primes);
     fixed_copy(*s, s->n_inverse, s->plan.n_inverse);
     fixed_copy(*s, s->b_matrix, s->plan.b_matrix);
-    fixed_copy(*s, s->invp, s->plan.invp);
+    const std::vector<float> invp_float(s->plan.invp.begin(), s->plan.invp.end());
+    fixed_copy(*s, s->invp, invp_float);
     std::vector<Constant> constants(s->plan.pcount);
     std::vector<uint32_t> psi(planes), untwist_crt(planes);
     for (unsigned j = 0; j < s->plan.pcount; ++j) {
@@ -203,7 +205,6 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     bytecrt_pack_inputs(s.hostinput, in.a.data.data(), in.b.data.data(), coeffs);
     const auto packed = Clock::now();
     if (profile) check(cudaEventRecord(s.transfer_events[0]), "H2D start event");
-    check(cudaMemcpyAsync(s.inputs, s.hostinput, 2 * bytes, cudaMemcpyHostToDevice), "copy packed inputs");
     if (profile) check(cudaEventRecord(s.transfer_events[1]), "H2D end event");
     if (s.plan.n == 65536) product<65536, 114, 480>(s, profile);
     else product<32768, 57, 256>(s, profile);

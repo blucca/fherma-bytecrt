@@ -102,19 +102,20 @@ void run_fixture(const char* name, uint32_t n, uint32_t w, uint32_t gap) {
     // B and A lengths are multiples of 32; invp stays naturally eight-byte aligned.
     const size_t a_offset = f.b.size();
     const size_t invp_offset = a_offset + f.a.size();
-    const size_t q_offset = invp_offset + f.invp.size() * sizeof(double);
+    const std::vector<float> invp_float(f.invp.begin(), f.invp.end());
+    const size_t q_offset = invp_offset + invp_float.size() * sizeof(float);
     const size_t out_offset = q_offset + f.q.size() * sizeof(uint32_t);
     const size_t out_bytes = f.golden.size() * sizeof(uint32_t);
     DeviceSlab device;
     require(cudaMalloc(&device.data, out_offset + out_bytes), "allocate");
     uint8_t* d_b = device.data;
     uint8_t* d_a = device.data + a_offset;
-    double* d_invp = reinterpret_cast<double*>(device.data + invp_offset);
+    float* d_invp = reinterpret_cast<float*>(device.data + invp_offset);
     uint32_t* d_q = reinterpret_cast<uint32_t*>(device.data + q_offset);
     uint32_t* d_out = reinterpret_cast<uint32_t*>(device.data + out_offset);
     require(cudaMemcpy(d_b, f.b.data(), f.b.size(), cudaMemcpyHostToDevice), "copy B");
     require(cudaMemcpy(d_a, f.a.data(), f.a.size(), cudaMemcpyHostToDevice), "copy A");
-    require(cudaMemcpy(d_invp, f.invp.data(), f.invp.size() * sizeof(double), cudaMemcpyHostToDevice), "copy invp");
+    require(cudaMemcpy(d_invp, invp_float.data(), invp_float.size() * sizeof(float), cudaMemcpyHostToDevice), "copy invp");
     require(cudaMemcpy(d_q, f.q.data(), f.q.size() * sizeof(uint32_t), cudaMemcpyHostToDevice), "copy q");
     bytecrt::launch_g1_crt(s.w, s.m, d_a, d_b, d_invp, d_q, s.gap, d_out);
     require(cudaGetLastError(), "launch");

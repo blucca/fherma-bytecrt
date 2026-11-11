@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Measured complete result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.748 ms / 1.168 ms** ([C8 result](native-smoke/native-c8-result.json)), including all input/output conversion and transfers. The primary call improves 58.4% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
+**Measured complete result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.594 ms / 1.070 ms** ([C10 result](native-smoke/native-c10-result.json)), including all input/output conversion and transfers. The primary call improves 60.7% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
 
 ```sh
 python3 -B reference.py
@@ -117,4 +117,10 @@ The next complete native method writes RNS inputs directly in staged `[prime][id
 
 The next exact input method uses `w_k = 2^(8*k) mod p` for each input byte position. Four unsigned byte-dot sums reconstruct `x = sum(inputByte[k]*w_k) < 2^47`; one 64-bit Barrett reduction returns the canonical wide coefficient modulo p. This reduces MMA groups from 15 to 9 at the primary point and from 8 to 5 at the auxiliary point. [Source-extracted CPU proof](native-smoke/rns-byte-power-cpu-result.json) covers all actual primes and independent full-wide modulo.
 
-The final NTT now writes weighted residues contiguously in `[id][primeWord][i]` order. G1 restores the shared coefficient rows and writes the original natural output. Sixteen extra shared bytes per row make the unsigned-MMA A gathers bank-distinct at both widths. [Full-size CPU boundary/fixture proof](native-smoke/weighted-boundary-cpu-result.json) records the exact source scope. C10 target compilation, all-coefficient validation and complete-call measurement follow this combined candidate.
+The final NTT now writes weighted residues contiguously in `[id][primeWord][i]` order. G1 restores the shared coefficient rows and writes the original natural output. Sixteen extra shared bytes per row make the unsigned-MMA A gathers bank-distinct at both widths. [Full-size CPU boundary/fixture proof](native-smoke/weighted-boundary-cpu-result.json) records the exact source scope. [C10 target](native-smoke/native-c10-result.json) passes both full outputs at 3/3 seeds and measures 2.594 ms / 1.070 ms. Primary encode/inverse phase times are 265/82 µs, versus C8’s 389/195 µs.
+
+## Guarded FP32 alpha and mapped input
+
+The retained centered-CRT bound gives `|c/product| < 1/4`. At most 114 terms make the FP32 round-to-nearest error less than `P*gamma_(P+4) < 0.001`, so the nearest integer alpha is exact. C11 uses fixed float reciprocals and explicit RN arithmetic; [the proof and source check](native-smoke/fp32-alpha-cpu-result.json) include the two widths, signed bounds and four gap choices.
+
+C11 also packs inputs once into fixed write-combined mapped pinned memory and gives its explicit CUDA device alias to encode. Each input tile is read once to shared memory; all demand PCIe reads belong to encode and the complete-call timer. Standard output ownership and all per-input work remain unchanged. The subsequent target run selects the complete method by exact outputs and whole-call latency.
