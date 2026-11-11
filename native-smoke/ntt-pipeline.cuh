@@ -67,9 +67,7 @@ __global__ void forward_first(uint32_t* ab, const uint32_t* tw,
 }
 
 // Coalesced input alternative; retains the C3 natural forward_first above.
-// ab_t and psi_t use id*K+i; psi_t holds ordinary psi^coefficient*R^2 mod p.
-// One Montgomery product converts canonical input and twists it in the same step.
-// ab receives the SDK natural id+i*256 scatter.
+// ab_t and psi_t use id*K+i; ab receives the SDK natural id+i*256 scatter.
 // ab_t and ab are disjoint: a natural scatter can overwrite another CTA's
 // unread transposed input when the two pointers alias.
 template<uint32_t N>
@@ -87,7 +85,7 @@ __global__ void forward_first_coalesced(const uint32_t* ab_t, uint32_t* ab,
     auto* poly = ab + size_t(blockIdx.y) * N;
     Staged<N, cupqc::nttDirection::FORWARD> f;
     for (uint32_t i = threadIdx.x; i < K; i += blockDim.x)
-        s[i] = bytecrt::mont_mul_word(input[i], psi[i], mc.p, mc.n_dash);
+        s[i] = bytecrt::mont_mul_word(f.to_mont(input[i], mc), psi[i], mc.p, mc.n_dash);
     __syncthreads();
     // grid.x=256 and blockIdx.x=id preserve the runtime SDK's stage-local id.
     f.stage_1_execute(s, tw + size_t(prime) * N, mc.p);

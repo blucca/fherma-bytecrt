@@ -320,13 +320,14 @@ void* fherma_init(const fherma::Point& p) {
         constants[j] = Constant(prime);
         if (uint32_t(uint64_t(prime) * constants[j].n_dash) != UINT32_MAX)
             throw std::runtime_error("ByteCRT Montgomery inverse");
+        const uint32_t r_mod_p = s->plan.powers_mont[size_t(j) * p.L];
         uint32_t forward_power = 1, inverse_power = s->plan.crt_inverse[j];
         const uint32_t inverse_step = bytecrt::rns_detail::pow_mod(s->plan.psi_roots[j], prime - 2, prime);
         for (uint32_t i = 0; i < p.N; ++i) {
             const size_t psi_index = size_t(j) * p.N +
                 size_t(i % bytecrt::ntt::kSubSize) * (p.N / bytecrt::ntt::kSubSize) +
                 i / bytecrt::ntt::kSubSize;
-            psi[psi_index] = uint32_t(uint64_t(forward_power) * constants[j].r2 % prime); // transposed psi^i*R^2
+            psi[psi_index] = uint32_t(uint64_t(forward_power) * r_mod_p % prime); // transposed Montgomery
             untwist_crt[psi_index] = inverse_power; // transposed ordinary CRT untwist
             forward_power = uint32_t(uint64_t(forward_power) * s->plan.psi_roots[j] % prime);
             inverse_power = uint32_t(uint64_t(inverse_power) * inverse_step % prime);
@@ -456,9 +457,7 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
                 'A' + operand, elapsed(e[0], e[1]), op_encode, op_forward, call + 1);
         }
         // Encode is the sum of timed chunk kernels, excluding readiness waits.
-        // Per-chunk event spans also cover host API enqueue gaps on an empty
-        // stream. H2D-service sums those spans; operand/global coverage also
-        // includes gaps between chunks. Global H2D is the
+        // Operand H2D spans include host starvation gaps. Global H2D is the
         // first A chunk-start to last B copy-end coverage on the input stream.
         std::fprintf(stderr, "ByteCRT GPU encode: %.3f us (warm-up %u)\n", encode, call + 1);
         std::fprintf(stderr, "ByteCRT GPU forward1: %.3f us (warm-up %u)\n", forward, call + 1);

@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Official complete result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.690 ms / 0.525 ms**, ranked **#19** at measurement ([official C16 result](native-smoke/native-official-c16-result.json)); source is pinned at [official-c16-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c16-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. The [first official C15 result](native-smoke/native-official-c15-result.json) and its `first-official-20seed` tag preserve the earlier 1.927 ms / 0.938 ms measurement. The [C18 native gate](native-smoke/native-c18-result.json) passes both full outputs at 3/3 seeds, with medians **1.560 ms / 0.533 ms**; its source is the `native-c18` tag. Current C19 forward-factor work has a separate full native gate.
+**Official complete result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.690 ms / 0.525 ms**, ranked **#19** at measurement ([official C16 result](native-smoke/native-official-c16-result.json)); source is pinned at [official-c16-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c16-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. The [first official C15 result](native-smoke/native-official-c15-result.json) and its `first-official-20seed` tag preserve the earlier 1.927 ms / 0.938 ms measurement. The [C18 native gate](native-smoke/native-c18-result.json) passes both full outputs at 3/3 seeds, with medians **1.560 ms / 0.533 ms**; its source is the `native-c18` tag. The [C19 full gate](native-smoke/native-c19-result.json) passes both outputs but raises the primary median to 1.621 ms; production retains C18 for the next official twenty-seed update.
 
 ```sh
 python3 -B reference.py
@@ -158,3 +158,8 @@ C18 pipelines fixed 16,384-coefficient input chunks: four per operand at the pri
 ## Fixed forward conversion and twist
 
 C19 combines the coalesced first-stage canonical-to-Montgomery conversion and negacyclic twist using one fixed `ψ^i R² mod p` factor in the existing table. `Mont(x,ψ^iR²)=xψ^iR mod p` preserves every subsequent staged NTT/CRT operation and C18 input/output dependency. [Source/CPU proof](native-smoke/psi-r2-cpu-result.json) passes the full two-point factor tables and boundary words. The unchanged original natural NTT fixture remains available; target exactness/performance follow in the separate C19 gate.
+
+
+## C19 complete terminal result
+
+[C19](native-smoke/native-c19-result.json) passes both complete outputs at three fresh seeds per point, at **1.621 ms / 0.528 ms**. Its primary whole-call median rises 3.91% from C18; the local B-forward warm-up improves 2.048 µs. The primary complete-call gate restores C18 production byte-for-byte, preserving the fixed forward-factor proof and result as historical experiments.
