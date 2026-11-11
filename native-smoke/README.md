@@ -72,3 +72,7 @@ C1–C3 diagnostic commits used the attributed upstream schoolbook for their sma
 ## Source credit
 
 The generated `fherma.h`/`main.cpp` and the original CMake device-LTO pattern originate from [fherma-ai/polynomial-mult-cupqc-example](https://github.com/fherma-ai/polynomial-mult-cupqc-example/tree/e157fecf6066dac35c883a0c2e29e6d47d23e4bd), fixed commit e157fecf6066dac35c883a0c2e29e6d47d23e4bd. The official example declares Apache-2.0. ByteCRT arithmetic and integration are Apache-2.0 under the repository licence. The platform rewrites the generated harness at measurement.
+
+## Two-operand complete native result
+
+[C15](native-c15-result.json) passes 3/3 fresh seeds per full point plus two warm-ups: **1.937 ms / 1.055 ms** complete-call medians. Primary latency improves 12.9% from C14 and 7.7% from C12; auxiliary rises 5.8% from C14. Primary second-warm-up GPU pipeline-wall is 1536.288 µs; G1/D2H/output construction are 114.688/264.276/177.618 µs. Per-stream spans overlap and encode/forward sums carry their stated scope. Fixed locality reads GPU NUMA node 0, GPU-local CPUs 0–23, and allowed CPUs 0–23; affinity and allocation policy remain unchanged.

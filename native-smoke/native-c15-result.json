@@ -1,0 +1,236 @@
+{
+  "status": "PASS",
+  "source_commit": "fc710119230c3fcdfe6cc90e62678b9b44f078e3",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.001934056,
+        "median": 0.001937203,
+        "mean": 0.0020041503333333333,
+        "max": 0.002141192
+      },
+      "fresh_seeds": [
+        44,
+        82,
+        96
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.000914715,
+        "median": 0.001054692,
+        "mean": 0.0010087313333333335,
+        "max": 0.001056787
+      },
+      "fresh_seeds": [
+        51,
+        53,
+        77
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 177.696,
+            "forward1": 167.776,
+            "fused-middle": 108.128,
+            "inverse-weighted": 90.176,
+            "G1": 122.816,
+            "H2D": 1158.88
+          },
+          "host_us": {
+            "input-pack": 230.991,
+            "H2D+product": 1669.748,
+            "D2H": 265.434,
+            "output-construct": 604.625
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 495.552,
+                "encode": 91.264,
+                "forward1": 92.032
+              },
+              "B": {
+                "H2D-span": 568.544,
+                "encode": 86.432,
+                "forward1": 75.744
+              }
+            },
+            "GPU-pipeline-wall-us": 1642.592,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 230.991,
+              "B": 224.502,
+              "total": 455.493
+            }
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 190.56,
+            "forward1": 167.136,
+            "fused-middle": 101.984,
+            "inverse-weighted": 81.92,
+            "G1": 114.688,
+            "H2D": 1073.92
+          },
+          "host_us": {
+            "input-pack": 346.34,
+            "H2D+product": 1557.137,
+            "D2H": 264.276,
+            "output-construct": 177.618
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 487.296,
+                "encode": 102.944,
+                "forward1": 91.392
+              },
+              "B": {
+                "H2D-span": 543.584,
+                "encode": 87.616,
+                "forward1": 75.744
+              }
+            },
+            "GPU-pipeline-wall-us": 1536.288,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 346.34,
+              "B": 478.439,
+              "total": 824.779
+            }
+          }
+        }
+      ],
+      "setup_locality": {
+        "BDF": "0000:fe:00.0",
+        "gpu-numa-node": "0",
+        "gpu-local-cpulist": "0-23",
+        "cpu-allowed-list": "0-23"
+      }
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 51.36,
+            "forward1": 61.632,
+            "fused-middle": 32.352,
+            "inverse-weighted": 34.816,
+            "G1": 30.72,
+            "H2D": 395.776
+          },
+          "host_us": {
+            "input-pack": 538.002,
+            "H2D+product": 566.184,
+            "D2H": 158.838,
+            "output-construct": 888.646
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 184.128,
+                "encode": 26.496,
+                "forward1": 39.104
+              },
+              "B": {
+                "H2D-span": 178.784,
+                "encode": 24.864,
+                "forward1": 22.528
+              }
+            },
+            "GPU-pipeline-wall-us": 541.472,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 538.002,
+              "B": 79.655,
+              "total": 617.657
+            }
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 60.096,
+            "forward1": 61.92,
+            "fused-middle": 26.208,
+            "inverse-weighted": 26.624,
+            "G1": 24.576,
+            "H2D": 251.008
+          },
+          "host_us": {
+            "input-pack": 235.422,
+            "H2D+product": 393.814,
+            "D2H": 93.406,
+            "output-construct": 230.018
+          },
+          "operand_pipeline": {
+            "per_stream_us": {
+              "A": {
+                "H2D-span": 124.896,
+                "encode": 36.864,
+                "forward1": 37.344
+              },
+              "B": {
+                "H2D-span": 160.288,
+                "encode": 23.232,
+                "forward1": 24.576
+              }
+            },
+            "GPU-pipeline-wall-us": 376.64,
+            "join-wait-us": 0.416,
+            "host-pack-us": {
+              "A": 235.422,
+              "B": 44.424,
+              "total": 279.846
+            }
+          }
+        }
+      ],
+      "setup_locality": {
+        "BDF": "0000:fe:00.0",
+        "gpu-numa-node": "0",
+        "gpu-local-cpulist": "0-23",
+        "cpu-allowed-list": "0-23"
+      }
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T12:59:54.913Z",
+  "measurement_scope": "complete native diagnostic, 3 fresh seeds per full point",
+  "changes": "C15 two-operand pinned transfer/encode/forward pipeline with common B4 CRT and locality observations",
+  "phase_scope": "Per-stream spans overlap; encode/forward1 are summed A/B elapsed spans, H2D covers A-start to B-copy-end, input-pack is front A pack and H2D+product includes overlapped B pack. Whole-call is scored wall time; diagnostic events occur only in two warmups."
+}
