@@ -2,7 +2,16 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Official complete result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.674401 ms / 0.5215315 ms**, ranked **#19** at measurement ([official C18 result](native-smoke/native-official-c18-result.json)); measured source is pinned at [official-c18-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c18-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. C18 uses fixed chunked input and output; production retains that full-exact implementation. Earlier official [C16](native-smoke/native-official-c16-result.json) and [C15](native-smoke/native-official-c15-result.json) measurements and tags remain preserved. C19's pure forward-factor experiment is a complete exact negative result under the primary whole-call gate.
+## Batched coefficient-to-coefficient throughput
+
+The new independent [batched artifact](native-batched/) handles **128 products at N=65,536, W=1,747** with four bounded product slots, separate H2D/compute/D2H queues and ordinary owned-output heap retention. Its first full target run passes **B1 and B128 exact**: **89.809 ms for B128**, versus **291.519 ms** for the self-contained serial baseline (**69.19% lower whole-call latency**). Each is one fresh scored seed at its own batched specification, with one unscored warmup per point; the challenge's three-seed official measurement is in progress. All coefficient conversions, transfers, dependencies and the complete standard-owned result stay timed.
+
+- [B0 serial native result](native-batched/native-b0p-result.json) · [four-slot native result](native-batched/native-s1p-result.json)
+- Measured streaming source: [`aca09d6`](https://github.com/blucca/fherma-bytecrt/tree/aca09d65fe30e6c9497f7a0f038e9a9f4b7384df/native-batched); serial source: [`35d3956`](https://github.com/blucca/fherma-bytecrt/tree/35d3956b71f213aea8d1b5cd4281a8ec9f0952e2/native-batched)
+- [Why large owned outputs need a separate allocation measurement](native-batched/owned-output-cpu.md) · [real generated-harness lifecycle check](native-batched/harness-heap-cpu.md)
+
+
+**Frozen single-product official result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.674401 ms / 0.5215315 ms**, ranked **#19** at measurement ([official C18 result](native-smoke/native-official-c18-result.json)); measured source is pinned at [official-c18-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c18-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. C18 uses fixed chunked input and output; production retains that full-exact implementation. Earlier official [C16](native-smoke/native-official-c16-result.json) and [C15](native-smoke/native-official-c15-result.json) measurements and tags remain preserved. C19's pure forward-factor experiment is a complete exact negative result under the primary whole-call gate.
 
 ```sh
 python3 -B reference.py

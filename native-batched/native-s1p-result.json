@@ -1,0 +1,52 @@
+{
+  "source": "aca09d65fe30e6c9497f7a0f038e9a9f4b7384df",
+  "spec": "negacyclic-batched@1.0.0",
+  "status": "finished",
+  "cases": 2,
+  "passed": 2,
+  "verify": true,
+  "debug": false,
+  "native_snapshot": "6af4c1ebf4947a18ebdbc257",
+  "job": "6af4c1ebf4947a18ebdbc271",
+  "run": "6af4c1f6f4947a18ebdbc2da",
+  "finished_at": "2026-11-11T19:30:42.512Z",
+  "points": [
+    {
+      "point": "B1-N65536-W1747",
+      "seed": 1,
+      "seeds": 1,
+      "passed": 1,
+      "median_s": 0.0018155,
+      "memory_mb": {
+        "min": 158.8,
+        "median": 158.8,
+        "max": 158.8
+      },
+      "gpu_mem_mb": {
+        "min": 901,
+        "max": 901
+      }
+    },
+    {
+      "point": "B128-N65536-W1747",
+      "seed": 6,
+      "seeds": 1,
+      "passed": 1,
+      "median_s": 0.089808734,
+      "memory_mb": {
+        "min": 9177.2,
+        "median": 9177.2,
+        "max": 9177.2
+      },
+      "gpu_mem_mb": {
+        "min": 1915,
+        "max": 1915
+      }
+    }
+  ],
+  "baseline_b128_s": 0.291519151,
+  "b128_saving_percent": 69.19285278791169,
+  "first_method_15_percent_gate_passed": true,
+  "formal_entry": false,
+  "prize_received_USD": 0
+}

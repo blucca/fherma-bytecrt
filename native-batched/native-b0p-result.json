@@ -1,0 +1,29 @@
+{
+  "source": "35d3956b71f213aea8d1b5cd4281a8ec9f0952e2",
+  "spec": "negacyclic-batched@1.0.0",
+  "status": "finished",
+  "exact_passed": 2,
+  "cases": 2,
+  "verify": true,
+  "debug": false,
+  "timing": "one fresh scored seed per full point, one unscored warmup per point; complete coefficient-to-coefficient owned-output call",
+  "points": [
+    {
+      "point": "B1-N65536-W1747",
+      "seeds": 1,
+      "passed": 1,
+      "median_s": 0.001600642
+    },
+    {
+      "point": "B128-N65536-W1747",
+      "seeds": 1,
+      "passed": 1,
+      "median_s": 0.291519151
+    }
+  ],
+  "finished_at": "2026-11-11T19:18:39.380Z",
+  "formal_entry": false,
+  "native_snapshot": "6af4bd04f4947a18ebdafec2",
+  "job": "6af4bd06f4947a18ebdb0332",
+  "run": "6af4bf25f4947a18ebdb50a9"
+}
