@@ -1,0 +1,101 @@
+{
+  "at": "2026-11-11T20:21:22.260082+00:00",
+  "state": "official_ranked_qualification_query_mismatch",
+  "submission": "6af4c1ebf4947a18ebdbc257",
+  "job": "6af4ca25f4947a18ebdc32b9",
+  "implementation": "6af4afcdf4947a18ebd483af",
+  "expected_source": {
+    "kind": "repository",
+    "location": "https://github.com/blucca/fherma-bytecrt",
+    "digest": "aca09d65fe30e6c9497f7a0f038e9a9f4b7384df",
+    "path": "native-batched"
+  },
+  "spec": {
+    "kernel": "polynomial-multiplication",
+    "slug": "negacyclic-batched",
+    "version": "1.0.0",
+    "id": "6af440361874ee4592df65f5"
+  },
+  "target": {
+    "runner": "6aa6690fd4413d278e91947e",
+    "image": "fherma/cupqc@sha256:17b7ae721d6effe968f4c2ccf3876cde7a3a77df1eb3f28a1f41ea643a6fa802"
+  },
+  "checks_failed": [
+    "same_qualifying_entered_run"
+  ],
+  "collector_API_writes": 0,
+  "collector_GPU_jobs_started": 0,
+  "measurement": {
+    "id": "6af4cb3af4947a18ebdc3cec",
+    "status": "finished",
+    "cases": 3,
+    "passed": 3,
+    "unjudged": 0,
+    "verify": true,
+    "debug": false,
+    "warmup_cases": 1,
+    "init_s": 4.481198676,
+    "finished_at": "2026-11-11T20:11:17.173Z",
+    "timing": "whole-call B=128 coefficient-to-coefficient; one unscored warm-up; three scored fresh seeds",
+    "points": [
+      {
+        "point": "B128-N65536-W1747",
+        "seeds": 3,
+        "passed": 3,
+        "unjudged": 0,
+        "lost": 0,
+        "min_s": 0.089608885,
+        "median_s": 0.089648935,
+        "max_s": 0.089716234
+      }
+    ]
+  },
+  "enrollment": {
+    "qualifies": false,
+    "already_entered": true,
+    "participation": {
+      "id": "6af4ca24f4947a18ebdc3287",
+      "status": "submitted"
+    },
+    "official": {
+      "rank": 3,
+      "value": 0.089648935,
+      "unit": "s",
+      "status": "ranked"
+    },
+    "official_points": [
+      {
+        "point": "b128-n65536-w1747",
+        "run": "6af4cb3af4947a18ebdc3cec",
+        "value": 0.089648935,
+        "seeds": 3,
+        "passed": 3,
+        "image": "fherma/cupqc@sha256:17b7ae721d6effe968f4c2ccf3876cde7a3a77df1eb3f28a1f41ea643a6fa802"
+      }
+    ]
+  },
+  "formal_entry_accepted": true,
+  "prize_received_USD": 0,
+  "acceptance_evidence": "official ranked row, submitted participation, same source/run/target/three exact seeds and declared new-point contract",
+  "qualification_query": {
+    "qualifies": false,
+    "already_entered": true,
+    "why": [
+      "3 seeds at b128-n65536-w1747; the challenge samples 20",
+      "did not measure n65536-w1747",
+      "did not measure n32768-w868"
+    ],
+    "declared_new_point_seeds": 3,
+    "query_global_seeds": 20,
+    "query_includes_old_spec_points": true
+  },
+  "reported_process_memory_mb": {
+    "min": 12801.4,
+    "median": 12801.4,
+    "max": 12801.4
+  },
+  "reported_gpu_memory_mb": {
+    "min": 1915,
+    "max": 1915
+  }
+}
