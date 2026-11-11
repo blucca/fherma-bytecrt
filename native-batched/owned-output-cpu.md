@@ -25,3 +25,7 @@ mallopt(M_TRIM_THRESHOLD, -1);
 The batched artifact selects these during setup for B>1 at the declared fixed point. The allocator owns every returned standard vector, callers release it normally, and every result word is still constructed after its own D2H completion inside the timed call. Retaining allocator pages removes repeated first-touch work after the first allocation. Input values and GPU arithmetic stay unchanged. The process releases its retained heap on exit.
 
 This measurement covers CPU memory construction on the machine above. The complete target-native B=128 operation, including input arrays, CUDA, transfer overlap and the harness allocator lifecycle, supplies the final latency and peak-memory gate.
+
+## Real generated-harness lifecycle
+
+A [33 MiB real-harness CPU check](harness-heap-cpu.md) passed all 8 complete outputs. The retained-heap mode had zero first-case output-copy faults and 0/6/0 successor faults, with the generated input reads supplying prefaulted heap storage before each timed call. The full native target remains the complete throughput and memory gate.

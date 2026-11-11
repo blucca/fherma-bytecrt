@@ -1,0 +1,46 @@
+{
+  "status": "pass",
+  "elapsed_s": 23.495361789828166,
+  "cases_verified": 8,
+  "words_verified": 69206016,
+  "runs": {
+    "default": {
+      "warmup_copy_minflt": 8448,
+      "successor_copy_minflt": [
+        8448,
+        6915,
+        6915
+      ],
+      "successor_copy_ms": [
+        11.129574999999999,
+        9.231781,
+        9.375187
+      ],
+      "successor_copy_median_ms": 9.375187,
+      "successor_core_run_median_ms": 12.830909,
+      "successor_generated_run_median_ms": 12.99661,
+      "maxrss_kib": 105940,
+      "run_virtual_kib": 108972,
+      "final_total_minflt": 358050
+    },
+    "mallopt": {
+      "warmup_copy_minflt": 0,
+      "successor_copy_minflt": [
+        0,
+        6,
+        0
+      ],
+      "successor_copy_ms": [
+        2.699334,
+        3.568994,
+        2.648419
+      ],
+      "successor_copy_median_ms": 2.699334,
+      "successor_core_run_median_ms": 7.006839,
+      "successor_generated_run_median_ms": 7.192881,
+      "maxrss_kib": 138460,
+      "run_virtual_kib": 173208,
+      "final_total_minflt": 33341
+    }
+  }
+}
