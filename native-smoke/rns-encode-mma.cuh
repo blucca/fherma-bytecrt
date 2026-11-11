@@ -142,6 +142,113 @@ __global__ void encode_mma16(unsigned N,
     }
 }
 
+// Fixed MT32: two independent m16 accumulators reuse each B0/B1 load.
+// The second A gather happens after the first MMA, keeping its A registers
+// dead before the next gather. Each half-warp emits both row r and r+16.
+template <unsigned L, unsigned P, unsigned Kpad, bool Transposed = false>
+__global__ void encode_mma32(unsigned N,
+                            const uint32_t* __restrict__ inputs,
+                            const uint8_t* __restrict__ b,
+                            const uint32_t* __restrict__ primes,
+                            const uint64_t* __restrict__ mu,
+                            uint32_t* __restrict__ ab) {
+    static_assert((L == 55 && P == 114 && Kpad == 224) ||
+                  (L == 28 && P == 57 && Kpad == 128), "tensor RNS geometry");
+    static_assert(4 * L * 255 * 255 < (uint32_t{1} << 31), "exact s32 byte dots");
+    constexpr unsigned MT = 32, NT = 56, threads = 224;
+    constexpr unsigned groups = (P + 13) / 14;
+    constexpr unsigned shared_stride = Kpad + 16;
+    constexpr unsigned word_stride = shared_stride / 4;
+    // +16 bytes makes each MMA half-row gather bank-distinct at both widths.
+    __shared__ __align__(16) uint8_t shared_a[MT][shared_stride];
+    __shared__ int32_t shared_c[MT][NT + 1];
+
+    const unsigned tid = threadIdx.x;
+    const unsigned lane = tid & 31, warp = tid >> 5;
+    const unsigned g = lane >> 2, t = lane & 3;
+    const unsigned k_lane = 4 * t;
+    // Transposed launch: blockIdx.x = tile*256 + id, row r selects
+    // coefficient id + (tile*32+r)*256; each row retains contiguous limbs.
+    constexpr unsigned transpose_m = 256;
+    const unsigned id = Transposed ? blockIdx.x % transpose_m : 0;
+    const unsigned first_row = (Transposed ? blockIdx.x / transpose_m : blockIdx.x) * MT;
+    const unsigned operand = blockIdx.y;
+    const std::size_t input_base = std::size_t{operand} * N * L;
+    auto* shared_words = reinterpret_cast<uint32_t*>(shared_a);
+    for (unsigned word = tid; word < MT * word_stride; word += threads) {
+        const unsigned row = first_row + word / word_stride;
+        const unsigned coefficient = Transposed ? id + row * transpose_m : row;
+        const unsigned limb = word % word_stride;
+        shared_words[word] = coefficient < N && limb < L
+            ? inputs[input_base + std::size_t{coefficient} * L + limb]
+            : 0;
+    }
+    __syncthreads();
+
+    for (unsigned group = 0; group < groups; ++group) {
+        const unsigned b_col = group * NT + warp * 8 + g;
+        int32_t c0 = 0, c1 = 0, c2 = 0, c3 = 0;
+        int32_t c4 = 0, c5 = 0, c6 = 0, c7 = 0;
+        #pragma unroll
+        for (unsigned k = 0; k < Kpad; k += 32) {
+            const uint32_t a0 = *reinterpret_cast<const uint32_t*>(shared_a[g] + k + k_lane);
+            const uint32_t a1 = *reinterpret_cast<const uint32_t*>(shared_a[g + 8] + k + k_lane);
+            const uint32_t a2 = *reinterpret_cast<const uint32_t*>(shared_a[g] + k + k_lane + 16);
+            const uint32_t a3 = *reinterpret_cast<const uint32_t*>(shared_a[g + 8] + k + k_lane + 16);
+            uint32_t b0 = 0, b1 = 0;
+            if (b_col < 4 * P) {
+                const uint8_t* column = b + std::size_t{b_col} * Kpad + k + k_lane;
+                b0 = *reinterpret_cast<const uint32_t*>(column);
+                b1 = *reinterpret_cast<const uint32_t*>(column + 16);
+            }
+            asm volatile(
+                "mma.sync.aligned.m16n8k32.row.col.s32.u8.u8.s32 "
+                "{%0, %1, %2, %3}, {%4, %5, %6, %7}, {%8, %9}, {%0, %1, %2, %3};\n"
+                : "+r"(c0), "+r"(c1), "+r"(c2), "+r"(c3)
+                : "r"(a0), "r"(a1), "r"(a2), "r"(a3), "r"(b0), "r"(b1));
+            const uint32_t a4 = *reinterpret_cast<const uint32_t*>(shared_a[g + 16] + k + k_lane);
+            const uint32_t a5 = *reinterpret_cast<const uint32_t*>(shared_a[g + 24] + k + k_lane);
+            const uint32_t a6 = *reinterpret_cast<const uint32_t*>(shared_a[g + 16] + k + k_lane + 16);
+            const uint32_t a7 = *reinterpret_cast<const uint32_t*>(shared_a[g + 24] + k + k_lane + 16);
+            asm volatile(
+                "mma.sync.aligned.m16n8k32.row.col.s32.u8.u8.s32 "
+                "{%0, %1, %2, %3}, {%4, %5, %6, %7}, {%8, %9}, {%0, %1, %2, %3};\n"
+                : "+r"(c4), "+r"(c5), "+r"(c6), "+r"(c7)
+                : "r"(a4), "r"(a5), "r"(a6), "r"(a7), "r"(b0), "r"(b1));
+        }
+        const unsigned c_col = warp * 8 + 2 * t;
+        shared_c[g][c_col] = c0;
+        shared_c[g][c_col + 1] = c1;
+        shared_c[g + 8][c_col] = c2;
+        shared_c[g + 8][c_col + 1] = c3;
+        shared_c[g + 16][c_col] = c4;
+        shared_c[g + 16][c_col + 1] = c5;
+        shared_c[g + 24][c_col] = c6;
+        shared_c[g + 24][c_col + 1] = c7;
+        __syncthreads();
+
+        const unsigned local_prime = tid / 16;
+        const unsigned prime = group * 14 + local_prime;
+        if (prime < P) {
+            #pragma unroll
+            for (unsigned half = 0; half < 2; ++half) {
+                const unsigned shared_row = tid % 16 + half * 16;
+                const unsigned row = first_row + shared_row;
+                const unsigned coefficient = Transposed ? id + row * transpose_m : row;
+                if (coefficient < N) {
+                    const int32_t* sums = shared_c[shared_row] + 4 * local_prime;
+                    const uint32_t residue = detail::encode_mma_reduce(
+                        sums, primes[prime], mu[prime]);
+                    const unsigned destination = Transposed ? id * (N / transpose_m) + row : coefficient;
+                    ab[(std::size_t{operand} * P + prime) * N + destination] = residue;
+                }
+            }
+        }
+        // All 224 threads reach both group barriers, including tail lanes.
+        __syncthreads();
+    }
+}
+
 // Inputs are A then B, coefficient-major [2][N][L] little-endian u32 limbs.
 // b is make_encode_b's fixed byte-power matrix; mu[j]=UINT64_MAX/p[j].
 // Output is compact canonical [2][P][N].
@@ -185,6 +292,25 @@ inline void launch_encode_mma_transposed(unsigned N, unsigned L, unsigned P,
             N, d_inputs, d_b, d_p, d_mu, d_ab_t);
     else
         throw std::runtime_error("ByteCRT transposed tensor encoding requires full staged geometries");
+}
+
+// Full-size MT32 production launcher; the MT16 launchers above stay intact.
+inline void launch_encode_mma32_transposed(unsigned N, unsigned L, unsigned P,
+                                            const uint32_t* d_inputs,
+                                            const uint8_t* d_b,
+                                            const uint32_t* d_p,
+                                            const uint64_t* d_mu,
+                                            uint32_t* d_ab_t,
+                                            cudaStream_t stream = nullptr) {
+    const dim3 grid(N / 32, 2);
+    if (N == 65536 && L == 55 && P == 114)
+        encode_mma32<55, 114, 224, true><<<grid, 224, 0, stream>>>(
+            N, d_inputs, d_b, d_p, d_mu, d_ab_t);
+    else if (N == 32768 && L == 28 && P == 57)
+        encode_mma32<28, 57, 128, true><<<grid, 224, 0, stream>>>(
+            N, d_inputs, d_b, d_p, d_mu, d_ab_t);
+    else
+        throw std::runtime_error("ByteCRT MT32 encoding requires full staged geometries");
 }
 
 }  // namespace bytecrt

@@ -107,7 +107,7 @@ void product(State& s, bool profile) {
     constexpr size_t middle = 2 * cupqc::fwd_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     constexpr size_t last = cupqc::inv_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     mark(s, profile, 0);
-    bytecrt::launch_encode_mma_transposed(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
+    bytecrt::launch_encode_mma32_transposed(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
                                            s.encode_mu, s.ab_t);
     check(cudaGetLastError(), "coefficient RNS encoding");
     mark(s, profile, 1);
@@ -122,7 +122,7 @@ void product(State& s, bool profile) {
         s.c, s.weighted, s.inv_tw, s.untwist_crt, s.constants, s.n_inverse);
     check(cudaGetLastError(), "inverse weighted packing");
     mark(s, profile, 4);
-    bytecrt::launch_g1_crt_transposed(s.plan.w, N, reinterpret_cast<const uint8_t*>(s.weighted),
+    bytecrt::launch_g1_crt32_transposed(s.plan.w, N, reinterpret_cast<const uint8_t*>(s.weighted),
                          s.b_matrix, s.invp, s.q, s.plan.gap, s.out);
     check(cudaGetLastError(), "fused byte CRT");
     mark(s, profile, 5);
@@ -136,6 +136,7 @@ void* fherma_init(const fherma::Point& p) {
     if (p.L != s->plan.l) throw std::runtime_error("ByteCRT point L mismatch");
     const size_t coeffs = size_t(p.N) * p.L;
     const size_t planes = size_t(p.N) * s->plan.pcount;
+    allocate(*s, s->inputs, 2 * coeffs);
     allocate(*s, s->ab, 2 * planes);
     allocate(*s, s->ab_t, 2 * planes);
     allocate(*s, s->c, planes);
@@ -145,9 +146,7 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
     check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
-    // CPU write-only mapped staging; encode reads its device alias; cudaFreeHost owns it.
-    check(cudaHostAlloc(&s->hostinput, 2 * coeffs * sizeof(uint32_t), cudaHostAllocWriteCombined | cudaHostAllocMapped), "allocate pinned input");
-    check(cudaHostGetDevicePointer(reinterpret_cast<void**>(&s->inputs), s->hostinput, 0), "map pinned inputs");
+    check(cudaMallocHost(&s->hostinput, 2 * coeffs * sizeof(uint32_t)), "allocate pinned input");
     fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes));
     std::vector<uint64_t> encode_mu(s->plan.pcount);
     for (unsigned j = 0; j < s->plan.pcount; ++j) encode_mu[j] = UINT64_MAX / s->plan.primes[j];
@@ -205,6 +204,7 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     bytecrt_pack_inputs(s.hostinput, in.a.data.data(), in.b.data.data(), coeffs);
     const auto packed = Clock::now();
     if (profile) check(cudaEventRecord(s.transfer_events[0]), "H2D start event");
+    check(cudaMemcpyAsync(s.inputs, s.hostinput, 2 * bytes, cudaMemcpyHostToDevice), "copy packed inputs");
     if (profile) check(cudaEventRecord(s.transfer_events[1]), "H2D end event");
     if (s.plan.n == 65536) product<65536, 114, 480>(s, profile);
     else product<32768, 57, 256>(s, profile);

@@ -1,0 +1,24 @@
+{
+  "status": "PASS",
+  "encoder_canonical_words": 33174,
+  "G1_golden_words": 23904,
+  "source_fragment_words": 4249280,
+  "source_shared_C_cells": 378112,
+  "source_shared_copy_words": 75520,
+  "encoder_tile_executions": 16,
+  "G1_tile_executions": 18,
+  "old_full_fixedword_gate_repeated": false,
+  "CUDA_compilations": 0,
+  "GPU_executions": 0,
+  "scope": "small source-extracted MT32 copy/dual fragments/scatter/epilogue/output; locked m16 reference contract reused twice",
+  "locked_fragment_reference_output_words": 14336,
+  "original_MT16_kernels_preserved": true,
+  "FP32_alpha_guard_proof_reused": {
+    "path": "temp/round537/fp32-alpha/result.json",
+    "sha256": "92d42623a000bda7e5aa36720118fa29b1bbdf0eb0c46fc4a259d8c0ee22556f",
+    "absolute_error_bounds": [
+      0.0008018073209085385,
+      0.00020724610340668606
+    ]
+  }
+}
