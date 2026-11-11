@@ -1,0 +1,22 @@
+{
+  "status": "PASS",
+  "base_commit": "49d57cb3712ebc1dabc73fad7299a58eb3c0177d",
+  "cpu": {
+    "status": "PASS",
+    "normal_full_points": 2,
+    "error_cases": 2,
+    "full_source_words": 9043968,
+    "all_dma_mock_words": 9044163,
+    "successful_registrations": 7,
+    "unregistrations": 7,
+    "error_drains": 3,
+    "live_registrations_after_cases": 0,
+    "gpu_executions": 0
+  },
+  "scope": "lifted read-only registration guard/raw-range H2D call; paired owner/completion boundary; complete C16 output chain source-identical",
+  "native_cuda_compile": "pending C17 target",
+  "native_cuda_execution": "pending C17 target",
+  "performance_samples": 0,
+  "gpu_executions": 0,
+  "patch_check": "PASS"
+}
