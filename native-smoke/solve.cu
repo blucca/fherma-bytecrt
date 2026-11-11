@@ -11,12 +11,13 @@
 #include <array>
 #include <chrono>
 #include <cstdio>
+#include <fstream>
 #include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
 
-void bytecrt_pack_inputs(uint32_t*, const uint32_t*, const uint32_t*, std::size_t);
+void bytecrt_pack_operand(uint32_t*, const uint32_t*, std::size_t);
 
 namespace {
 
@@ -26,6 +27,24 @@ using Constant = cupqc::nttConst<uint32_t>;
 void check(cudaError_t e, const char* what) {
     if (e != cudaSuccess)
         throw std::runtime_error(std::string("ByteCRT ") + what + ": " + cudaGetErrorString(e));
+}
+
+// Fixed-setup locality readout; no affinity or allocation policy changes.
+void print_setup_value(const char* label, const std::string& path,
+                       const std::string& key = {}) {
+    std::ifstream file(path);
+    std::string line;
+    while (std::getline(file, line)) {
+        if (key.empty() || line.compare(0, key.size(), key) == 0) {
+            std::string value = key.empty() ? line : line.substr(key.size());
+            const auto first = value.find_first_not_of(" \t");
+            if (first != std::string::npos) value.erase(0, first);
+            std::fprintf(stderr, "ByteCRT locality %s available=true value=%s\n",
+                         label, value.c_str());
+            return;
+        }
+    }
+    std::fprintf(stderr, "ByteCRT locality %s available=false\n", label);
 }
 
 struct State {
@@ -51,12 +70,17 @@ struct State {
     float* invp = nullptr;
     Constant* constants = nullptr;
     std::vector<void*> allocations;
-    std::array<cudaEvent_t, 6> events{};
-    std::array<cudaEvent_t, 2> transfer_events{};
+    std::array<cudaStream_t, 2> streams{};
+    cudaEvent_t a_forwarded = nullptr;  // dependency only; timing disabled
+    std::array<std::array<cudaEvent_t, 4>, 2> operand_events{};
+    std::array<cudaEvent_t, 4> events{};  // joined middle / inverse / CRT
     unsigned calls = 0;
     ~State() {
         for (auto e : events) if (e) cudaEventDestroy(e);
-        for (auto e : transfer_events) if (e) cudaEventDestroy(e);
+        for (const auto& op : operand_events)
+            for (auto e : op) if (e) cudaEventDestroy(e);
+        if (a_forwarded) cudaEventDestroy(a_forwarded);
+        for (auto stream : streams) if (stream) cudaStreamDestroy(stream);
         for (void* p : allocations) cudaFree(p);
         if (hostout) cudaFreeHost(hostout);
         if (hostinput) cudaFreeHost(hostinput);
@@ -95,37 +119,63 @@ void initialize_tables(State& s) {
     check(cudaDeviceSynchronize(), "fixed tables");
 }
 
-void mark(State& s, bool profile, unsigned event) {
-    if (profile) check(cudaEventRecord(s.events[event]), "profile event");
+void mark(State& s, bool profile, unsigned event, cudaStream_t stream) {
+    if (profile) check(cudaEventRecord(s.events[event], stream), "profile event");
+}
+
+void mark_operand(State& s, bool profile, unsigned operand, unsigned event) {
+    if (profile)
+        check(cudaEventRecord(s.operand_events[operand][event], s.streams[operand]),
+              "operand profile event");
+}
+
+template<uint32_t N, uint32_t P>
+void enqueue_operand(State& s, bool profile, unsigned operand) {
+    using namespace bytecrt::ntt;
+    constexpr size_t first = cupqc::fwd_stage_1_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
+    const size_t coeffs = size_t(N) * s.plan.l;
+    const size_t planes = size_t(N) * P;
+    const auto stream = s.streams[operand];
+    mark_operand(s, profile, operand, 0);
+    check(cudaMemcpyAsync(s.inputs + operand * coeffs, s.hostinput + operand * coeffs,
+                          coeffs * sizeof(uint32_t), cudaMemcpyHostToDevice, stream),
+          "copy packed operand");
+    mark_operand(s, profile, operand, 1);
+    bytecrt::launch_encode_mma32_transposed(N, s.plan.l, P, s.inputs + operand * coeffs,
+        s.encode_b, s.primes, s.encode_mu, s.ab_t + operand * planes, stream, 1);
+    check(cudaGetLastError(), "coefficient RNS encoding");
+    mark_operand(s, profile, operand, 2);
+    forward_first_coalesced<N><<<dim3(kSubSize, P), kThreads, first, stream>>>(
+        s.ab_t + operand * planes, s.ab + operand * planes,
+        s.tw, s.psi, s.constants, P);
+    check(cudaGetLastError(), "forward first");
+    mark_operand(s, profile, operand, 3);
+    if (operand == 0)
+        check(cudaEventRecord(s.a_forwarded, stream), "A-forwarded dependency");
 }
 
 template<uint32_t N, uint32_t P, uint32_t Kpad>
-void product(State& s, bool profile) {
+void finish_product(State& s, bool profile) {
     using namespace bytecrt::ntt;
     constexpr uint32_t K = N / kSubSize;
-    constexpr size_t first = cupqc::fwd_stage_1_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     constexpr size_t middle = 2 * cupqc::fwd_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     constexpr size_t last = cupqc::inv_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
-    mark(s, profile, 0);
-    bytecrt::launch_encode_mma32_transposed(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
-                                           s.encode_mu, s.ab_t);
-    check(cudaGetLastError(), "coefficient RNS encoding");
-    mark(s, profile, 1);
-    forward_first_coalesced<N><<<dim3(kSubSize, 2 * P), kThreads, first>>>(
-        s.ab_t, s.ab, s.tw, s.psi, s.constants, P);
-    check(cudaGetLastError(), "forward first");
-    mark(s, profile, 2);
-    fused_middle<N><<<dim3(K, P), kThreads, middle>>>(s.ab, s.c, s.tw, s.inv_tw, s.constants, P);
+    const auto stream = s.streams[1];
+    // B forward1 precedes this in stream 1; this event contributes A forward1.
+    check(cudaStreamWaitEvent(stream, s.a_forwarded, 0), "join forwarded operands");
+    mark(s, profile, 0, stream);
+    fused_middle<N><<<dim3(K, P), kThreads, middle, stream>>>(
+        s.ab, s.c, s.tw, s.inv_tw, s.constants, P);
     check(cudaGetLastError(), "fused spectral middle");
-    mark(s, profile, 3);
-    bytecrt::inverse_weighted<N, P, Kpad, true><<<dim3(kSubSize, P), kThreads, last>>>(
+    mark(s, profile, 1, stream);
+    bytecrt::inverse_weighted<N, P, Kpad, true><<<dim3(kSubSize, P), kThreads, last, stream>>>(
         s.c, s.weighted, s.inv_tw, s.untwist_crt, s.constants, s.n_inverse);
     check(cudaGetLastError(), "inverse weighted packing");
-    mark(s, profile, 4);
+    mark(s, profile, 2, stream);
     bytecrt::launch_g1_crt32_transposed(s.plan.w, N, reinterpret_cast<const uint8_t*>(s.weighted),
-                         s.b_matrix, s.invp, s.q, s.plan.gap, s.out);
+                         s.b_matrix, s.invp, s.q, s.plan.gap, s.out, stream);
     check(cudaGetLastError(), "fused byte CRT");
-    mark(s, profile, 5);
+    mark(s, profile, 3, stream);
 }
 
 }  // namespace
@@ -182,12 +232,25 @@ void* fherma_init(const fherma::Point& p) {
     fixed_copy(*s, s->untwist_crt, untwist_crt);
     if (p.N == 65536) initialize_tables<65536>(*s);
     else initialize_tables<32768>(*s);
+    for (auto& stream : s->streams)
+        check(cudaStreamCreateWithFlags(&stream, cudaStreamNonBlocking), "operand stream setup");
+    check(cudaEventCreateWithFlags(&s->a_forwarded, cudaEventDisableTiming),
+          "A-forwarded event setup");
+    for (auto& op : s->operand_events)
+        for (auto& e : op) check(cudaEventCreate(&e), "operand profile event setup");
     for (auto& e : s->events) check(cudaEventCreate(&e), "profile event setup");
-    for (auto& e : s->transfer_events) check(cudaEventCreate(&e), "transfer event setup");
     cudaDeviceProp props{};
     check(cudaGetDeviceProperties(&props, 0), "device properties");
     std::fprintf(stderr, "ByteCRT full setup N=%u W=%u L=%u P=%u gap=%u: %s, SMs=%d\n",
                  p.N, p.W, p.L, s->plan.pcount, s->plan.gap, props.name, props.multiProcessorCount);
+    char bdf[32];
+    std::snprintf(bdf, sizeof(bdf), "%04x:%02x:%02x.0",
+                  unsigned(props.pciDomainID), unsigned(props.pciBusID), unsigned(props.pciDeviceID));
+    std::fprintf(stderr, "ByteCRT locality BDF=%s\n", bdf);
+    const std::string pci = std::string("/sys/bus/pci/devices/") + bdf;
+    print_setup_value("gpu-numa-node", pci + "/numa_node");
+    print_setup_value("gpu-local-cpulist", pci + "/local_cpulist");
+    print_setup_value("cpu-allowed-list", "/proc/self/status", "Cpus_allowed_list:");
     return s.release();
 }
 
@@ -197,17 +260,24 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     const size_t bytes = coeffs * sizeof(uint32_t);
     if (in.a.data.size() != coeffs || in.b.data.size() != coeffs)
         throw std::runtime_error("ByteCRT input coefficient count");
-    // Both official warm-ups report phases; scored calls stay event-free.
+    // Warm-ups report phases; scored calls record only the A-forwarded dependency.
     const unsigned call = s.calls++;
     const bool profile = call < 2;
     const auto t0 = Clock::now();
-    bytecrt_pack_inputs(s.hostinput, in.a.data.data(), in.b.data.data(), coeffs);
-    const auto packed = Clock::now();
-    if (profile) check(cudaEventRecord(s.transfer_events[0]), "H2D start event");
-    check(cudaMemcpyAsync(s.inputs, s.hostinput, 2 * bytes, cudaMemcpyHostToDevice), "copy packed inputs");
-    if (profile) check(cudaEventRecord(s.transfer_events[1]), "H2D end event");
-    if (s.plan.n == 65536) product<65536, 114, 480>(s, profile);
-    else product<32768, 57, 256>(s, profile);
+    bytecrt_pack_operand(s.hostinput, in.a.data.data(), coeffs);
+    const auto a_packed = Clock::now();
+    if (s.plan.n == 65536) enqueue_operand<65536, 114>(s, profile, 0);
+    else enqueue_operand<32768, 57>(s, profile, 0);
+    const auto a_submitted = Clock::now();
+    bytecrt_pack_operand(s.hostinput + coeffs, in.b.data.data(), coeffs);
+    const auto b_packed = Clock::now();
+    if (s.plan.n == 65536) {
+        enqueue_operand<65536, 114>(s, profile, 1);
+        finish_product<65536, 114, 480>(s, profile);
+    } else {
+        enqueue_operand<32768, 57>(s, profile, 1);
+        finish_product<32768, 57, 256>(s, profile);
+    }
     check(cudaDeviceSynchronize(), "full product execute");
     const auto t2 = Clock::now();
     check(cudaMemcpy(s.hostout, s.out, bytes, cudaMemcpyDeviceToHost), "copy complete coefficients");
@@ -217,18 +287,43 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     out.c.data.assign(s.hostout, s.hostout + coeffs);
     const auto t4 = Clock::now();
     if (profile) {
-        const char* names[] = {"encode", "forward1", "fused-middle", "inverse-weighted", "G1"};
-        for (unsigned i = 0; i < 5; ++i) {
+        const auto elapsed = [](cudaEvent_t a, cudaEvent_t b) {
             float ms = 0;
-            check(cudaEventElapsedTime(&ms, s.events[i], s.events[i + 1]), "profile elapsed");
-            std::fprintf(stderr, "ByteCRT GPU %s: %.3f us (warm-up %u)\n", names[i], double(ms) * 1000, call + 1);
+            check(cudaEventElapsedTime(&ms, a, b), "profile elapsed");
+            return double(ms) * 1000;
+        };
+        double encode = 0, forward = 0;
+        for (unsigned operand = 0; operand < 2; ++operand) {
+            const auto& e = s.operand_events[operand];
+            const double op_encode = elapsed(e[1], e[2]);
+            const double op_forward = elapsed(e[2], e[3]);
+            encode += op_encode;
+            forward += op_forward;
+            std::fprintf(stderr,
+                "ByteCRT GPU operand-%c H2D-span=%.3f encode=%.3f forward1=%.3f us (warm-up %u)\n",
+                'A' + operand, elapsed(e[0], e[1]), op_encode, op_forward, call + 1);
         }
-        float transfer_ms = 0;
-        check(cudaEventElapsedTime(&transfer_ms, s.transfer_events[0], s.transfer_events[1]), "H2D elapsed");
-        std::fprintf(stderr, "ByteCRT GPU H2D: %.3f us (warm-up %u)\n", double(transfer_ms) * 1000, call + 1);
+        // encode / forward1 are sums of per-stream elapsed spans. H2D is the
+        // A-start to B-copy-end coverage; B's own H2D span can include queueing.
+        std::fprintf(stderr, "ByteCRT GPU encode: %.3f us (warm-up %u)\n", encode, call + 1);
+        std::fprintf(stderr, "ByteCRT GPU forward1: %.3f us (warm-up %u)\n", forward, call + 1);
+        const char* names[] = {"fused-middle", "inverse-weighted", "G1"};
+        for (unsigned i = 0; i < 3; ++i)
+            std::fprintf(stderr, "ByteCRT GPU %s: %.3f us (warm-up %u)\n",
+                         names[i], elapsed(s.events[i], s.events[i + 1]), call + 1);
+        std::fprintf(stderr, "ByteCRT GPU H2D: %.3f us (warm-up %u)\n",
+                     elapsed(s.operand_events[0][0], s.operand_events[1][1]), call + 1);
+        std::fprintf(stderr, "ByteCRT GPU pipeline-wall=%.3f join-wait=%.3f us (warm-up %u)\n",
+            elapsed(s.operand_events[0][0], s.events[3]),
+            elapsed(s.operand_events[1][3], s.events[0]), call + 1);
         const auto us = [](auto a, auto b) { return std::chrono::duration<double, std::micro>(b-a).count(); };
+        // Legacy four-field parser: input-pack is the front A pack only;
+        // H2D+product includes the overlapped B pack. The four fields add.
         std::fprintf(stderr, "ByteCRT host input-pack=%.3f H2D+product=%.3f D2H=%.3f output-construct=%.3f us (warm-up %u)\n",
-                     us(t0,packed), us(packed,t2), us(t2,t3), us(t3,t4), call + 1);
+                     us(t0,a_packed), us(a_packed,t2), us(t2,t3), us(t3,t4), call + 1);
+        std::fprintf(stderr, "ByteCRT host operand-pack A=%.3f B=%.3f total=%.3f us (warm-up %u)\n",
+            us(t0,a_packed), us(a_submitted,b_packed),
+            us(t0,a_packed) + us(a_submitted,b_packed), call + 1);
     }
     return out;
 }

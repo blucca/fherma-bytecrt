@@ -23,3 +23,20 @@ void bytecrt_pack_inputs(uint32_t* dest, const uint32_t* a, const uint32_t* b,
     }
     // The parallel-for's implicit barrier completes all copies before return.
 }
+
+// One operand is made DMA-ready before the caller starts packing the other.
+// Twelve disjoint chunks use the same capped worker count and libc backend.
+void bytecrt_pack_operand(uint32_t* dest, const uint32_t* source,
+                          std::size_t words) {
+    const int workers = std::min(12, omp_get_num_procs());
+    const std::size_t chunk_words = words / 12, extra = words % 12;
+#pragma omp parallel for num_threads(workers) schedule(static)
+    for (int task = 0; task < 12; ++task) {
+        const std::size_t chunk = static_cast<std::size_t>(task);
+        const std::size_t begin = chunk_words * chunk + std::min(extra, chunk);
+        const std::size_t count = chunk_words + (chunk < extra);
+        if (count)
+            std::memcpy(dest + begin, source + begin, count * sizeof(uint32_t));
+    }
+    // This barrier completes the operand before its pinned H2D submission.
+}

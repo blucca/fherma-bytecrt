@@ -1,0 +1,44 @@
+{
+  "status": "PASS",
+  "base_commit": "eab1959b778cdc896fad788b4242f00df1f8f294",
+  "source_scope": "lifted host run/enqueue/join with CUDA-call mocks; source-extracted encoder index equivalence; arithmetic preserved byte-for-byte",
+  "native_cuda_compile": "pending actual target",
+  "native_execution": "pending actual target",
+  "cpu": {
+    "status": "PASS",
+    "cpu_mock_scored_calls": 2,
+    "gpu_executions": 0,
+    "packed_words": 9043968,
+    "source_input_indices": 9043968,
+    "padding_selectors": 1179648,
+    "source_output_indices": 18677760,
+    "forward_endpoints": 175104,
+    "owned_output_words": 4521984,
+    "dependency_events": 2,
+    "diagnostic_events": 0,
+    "max_workers": 12,
+    "local_omp_processors": 4
+  },
+  "locality_fixture_branches": [
+    "first-line",
+    "prefixed-status-line",
+    "missing-file"
+  ],
+  "unchanged_headers": {
+    "g1-crt.cuh": "59cf0afb37b87e14d474fab7f92b6722cf2b35948f2b287bad930e0428ad0c35",
+    "ntt-pipeline.cuh": "af383f13c4743e0bcbdf18f78fef94fde938c3588cc36146ae150faf04fae4eb",
+    "ntt-weighted.cuh": "7ce451b0c8f8f9eea86fd24dc34665efb7f70b34cb355f8be43349bea280186b",
+    "rns-plan.hpp": "fe8d662cd8791933fac88c5332b51f406f7eb95a2384df9e18f4273b41325f17",
+    "rns-encode.cuh": "a9be3a744d93d0de151bcdbbefb6de86992af30316d4682ef1bf3760c2eb63db",
+    "fherma.h": "30dece50dc0d1b29609a4394f5b79e91963221d95c8c3e4ed77b35033071cb8b",
+    "CMakeLists.txt": "2ca71760f95682ab664c719445713fa05194e257028b1518e7757eacdae1166f"
+  },
+  "changed_source_sha256": {
+    "solve.cu": "0f6221c744e0c9993cee1a6ae734dd1aa53ab7dce3038bf0dde6862a9892645a",
+    "io-copy.cpp": "13fd9a1109f0c1b25a55bb89db52c6bf35ae22d06e399dbb34ad4f9715f5fe1a",
+    "rns-encode-mma.cuh": "5b3de59847d010d6ceea7a853cf33758125528757351bfc6faeaac074dc125d4"
+  },
+  "patch_check": "PASS",
+  "product_edits": 0,
+  "gpu_executions": 0
+}

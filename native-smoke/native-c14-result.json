@@ -1,0 +1,139 @@
+{
+  "status": "PASS",
+  "source_commit": "eab1959b778cdc896fad788b4242f00df1f8f294",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.002159235,
+        "median": 0.00222312,
+        "mean": 0.0022439036666666665,
+        "max": 0.002349356
+      },
+      "fresh_seeds": [
+        2,
+        34,
+        55
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.000954427,
+        "median": 0.000996706,
+        "mean": 0.0009855579999999999,
+        "max": 0.001005541
+      },
+      "fresh_seeds": [
+        9,
+        25,
+        59
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 164.064,
+            "forward1": 152.576,
+            "fused-middle": 101.6,
+            "inverse-weighted": 81.92,
+            "G1": 116.736,
+            "H2D": 1025.952
+          },
+          "host_us": {
+            "input-pack": 447.807,
+            "H2D+product": 1697.913,
+            "D2H": 358.303,
+            "output-construct": 607.045
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 165.376,
+            "forward1": 147.424,
+            "fused-middle": 98.304,
+            "inverse-weighted": 81.92,
+            "G1": 114.72,
+            "H2D": 935.04
+          },
+          "host_us": {
+            "input-pack": 631.787,
+            "H2D+product": 1565.437,
+            "D2H": 316.762,
+            "output-construct": 169.368
+          }
+        }
+      ]
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 49.216,
+            "forward1": 46.336,
+            "fused-middle": 27.68,
+            "inverse-weighted": 28.672,
+            "G1": 26.624,
+            "H2D": 352.608
+          },
+          "host_us": {
+            "input-pack": 704.066,
+            "H2D+product": 557.307,
+            "D2H": 161.084,
+            "output-construct": 849.265
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 37.792,
+            "forward1": 40.928,
+            "fused-middle": 24.576,
+            "inverse-weighted": 26.624,
+            "G1": 24.576,
+            "H2D": 229.184
+          },
+          "host_us": {
+            "input-pack": 262.078,
+            "H2D+product": 402.123,
+            "D2H": 78.164,
+            "output-construct": 241.756
+          }
+        }
+      ]
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T12:43:57.110Z",
+  "measurement_scope": "complete native diagnostic, 3 fresh seeds per full point",
+  "changes": "C14 four q-reduced per-input-byte CRT weights/columns with restored libc input packing"
+}

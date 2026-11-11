@@ -295,14 +295,17 @@ inline void launch_encode_mma_transposed(unsigned N, unsigned L, unsigned P,
 }
 
 // Full-size MT32 production launcher; the MT16 launchers above stay intact.
+// operands=1 uses sliced [N][L] input and [P][N] output bases; default=2
+// preserves the original two-operand launcher and every MT16 fixture ABI.
 inline void launch_encode_mma32_transposed(unsigned N, unsigned L, unsigned P,
                                             const uint32_t* d_inputs,
                                             const uint8_t* d_b,
                                             const uint32_t* d_p,
                                             const uint64_t* d_mu,
                                             uint32_t* d_ab_t,
-                                            cudaStream_t stream = nullptr) {
-    const dim3 grid(N / 32, 2);
+                                            cudaStream_t stream = nullptr,
+                                            unsigned operands = 2) {
+    const dim3 grid(N / 32, operands);
     if (N == 65536 && L == 55 && P == 114)
         encode_mma32<55, 114, 224, true><<<grid, 224, 0, stream>>>(
             N, d_inputs, d_b, d_p, d_mu, d_ab_t);
