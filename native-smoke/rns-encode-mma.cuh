@@ -151,7 +151,8 @@ __global__ void encode_mma32(unsigned N,
                             const uint8_t* __restrict__ b,
                             const uint32_t* __restrict__ primes,
                             const uint64_t* __restrict__ mu,
-                            uint32_t* __restrict__ ab) {
+                            uint32_t* __restrict__ ab,
+                            unsigned block_begin = 0) {
     static_assert((L == 55 && P == 114 && Kpad == 224) ||
                   (L == 28 && P == 57 && Kpad == 128), "tensor RNS geometry");
     static_assert(4 * L * 255 * 255 < (uint32_t{1} << 31), "exact s32 byte dots");
@@ -170,8 +171,9 @@ __global__ void encode_mma32(unsigned N,
     // Transposed launch: blockIdx.x = tile*256 + id, row r selects
     // coefficient id + (tile*32+r)*256; each row retains contiguous limbs.
     constexpr unsigned transpose_m = 256;
-    const unsigned id = Transposed ? blockIdx.x % transpose_m : 0;
-    const unsigned first_row = (Transposed ? blockIdx.x / transpose_m : blockIdx.x) * MT;
+    const unsigned block = block_begin + blockIdx.x;
+    const unsigned id = Transposed ? block % transpose_m : 0;
+    const unsigned first_row = (Transposed ? block / transpose_m : block) * MT;
     const unsigned operand = blockIdx.y;
     const std::size_t input_base = std::size_t{operand} * N * L;
     auto* shared_words = reinterpret_cast<uint32_t*>(shared_a);
@@ -314,6 +316,32 @@ inline void launch_encode_mma32_transposed(unsigned N, unsigned L, unsigned P,
             N, d_inputs, d_b, d_p, d_mu, d_ab_t);
     else
         throw std::runtime_error("ByteCRT MT32 encoding requires full staged geometries");
+}
+
+// Fixed input-pipeline range: whole transposed tiles, one sliced operand.
+// A tile has 256 CTAs * 32 rows and covers 8192 contiguous coefficients.
+// Only global CTA indexing changes; each byte dot/reduction is retained.
+inline void launch_encode_mma32_transposed_range(unsigned N, unsigned L, unsigned P,
+                                                  const uint32_t* d_inputs,
+                                                  const uint8_t* d_b,
+                                                  const uint32_t* d_p,
+                                                  const uint64_t* d_mu,
+                                                  uint32_t* d_ab_t,
+                                                  cudaStream_t stream,
+                                                  unsigned block_begin,
+                                                  unsigned block_count) {
+    if (block_begin % 256 || block_count == 0 || block_count % 256 ||
+        block_begin >= N / 32 || block_count > N / 32 - block_begin)
+        throw std::runtime_error("ByteCRT MT32 input range requires whole transposed tiles");
+    const dim3 grid(block_count, 1);
+    if (N == 65536 && L == 55 && P == 114)
+        encode_mma32<55, 114, 224, true><<<grid, 224, 0, stream>>>(
+            N, d_inputs, d_b, d_p, d_mu, d_ab_t, block_begin);
+    else if (N == 32768 && L == 28 && P == 57)
+        encode_mma32<28, 57, 128, true><<<grid, 224, 0, stream>>>(
+            N, d_inputs, d_b, d_p, d_mu, d_ab_t, block_begin);
+    else
+        throw std::runtime_error("ByteCRT MT32 input range requires full staged geometries");
 }
 
 }  // namespace bytecrt

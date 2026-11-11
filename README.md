@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Official complete result:** the first linked FHERMA challenge run passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.927 ms / 0.938 ms** ([official C15 result](native-smoke/native-official-c15-result.json)); source is pinned at [the first-official-20seed tag](https://github.com/blucca/fherma-bytecrt/tree/first-official-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. The chunked-output [C16 native diagnostic](native-smoke/native-c16-result.json) also passes both complete outputs at three fresh seeds per point, at **1.709 ms / 0.528 ms**; its measured source is the `native-c16` tag. The official twenty-seed entry remains linked to the C15 tag.
+**Official complete result:** the linked FHERMA challenge entry passes **40/40 exact**, at **20 fresh seeds per point**, on RTX PRO 6000 Blackwell. Complete-call medians are **1.690 ms / 0.525 ms**, ranked **#19** at measurement ([official C16 result](native-smoke/native-official-c16-result.json)); source is pinned at [official-c16-20seed](https://github.com/blucca/fherma-bytecrt/tree/official-c16-20seed). Every wide-coefficient/RNS conversion, transfer, dependency and standard-owned output construction remains inside the call. The [first official C15 result](native-smoke/native-official-c15-result.json) and its `first-official-20seed` tag preserve the earlier 1.927 ms / 0.938 ms measurement. Current C18 input changes have a separate complete native gate.
 
 ```sh
 python3 -B reference.py
@@ -148,3 +148,8 @@ The current output candidate uses fixed 512-CTA slices, each covering 16,384 con
 ## Call-local registration result
 
 [C17](native-smoke/native-c17-result.json) passes all complete outputs but measures 2.812 ms / 1.374 ms, versus C16's 1.709 ms / 0.528 ms. Primary second-warm-up registration is 1377 µs and unregistration 571 µs; the per-call page/tracking cost outweighs removed staging. Current code retains the native C16 pinned-copy pipeline; C17 remains a complete exact negative result.
+
+
+## Chunked input candidate
+
+C18 pipelines fixed 16,384-coefficient input chunks: four per operand at the primary point, two at the auxiliary. Each completed bounded CPU pack is copied on one H2D-only stream, then its readiness event starts the matching MT32 encoder range on the original operand stream. Complete first-stage NTT runs after all of that operand's encodes; B joins A before the unchanged middle/inverse/CRT/output chain. Partial encoder ranges retain every original integer operation and cover two whole transposed tiles each. [CPU/source check](native-smoke/input-pipeline-cpu-result.json) passes complete input/RNS/forward indexes and returned ownership; target CUDA/exactness and whole-call performance are measured separately.

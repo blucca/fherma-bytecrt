@@ -1,0 +1,52 @@
+{
+  "status": "PASS",
+  "base_commit": "29819bd577af69f9eae0e93670881326878d27f8",
+  "cpu": {
+    "status": "PASS",
+    "cpu_mock_scored_calls": 2,
+    "gpu_executions": 0,
+    "packed_words": 9043968,
+    "source_input_indices": 9043968,
+    "padded_load_words": 1179648,
+    "source_rns_indices": 18677760,
+    "source_forward_reads": 18677760,
+    "owned_output_words": 4521984,
+    "dependency_event_records": 26,
+    "stream_waits": 20,
+    "kernel_launches": 26,
+    "H2D_calls": 12,
+    "D2H_calls": 6,
+    "input_libc_worker_copies": 144,
+    "parallel_standard_output_inserts": 6,
+    "last_copied_complete": true,
+    "caller_owners_preserved": true
+  },
+  "source_scope": "lifted candidate host run/partial encoder launcher, source-derived MT32 full indexed input/RNS coverage and K/subsize forward reads, delayed-copy readiness/output mocks, real standard reserve/insert",
+  "MT32_arithmetic_body": "byte-identical after normalizing only block_begin parameter and global CTA selector",
+  "MT16_and_full_MT32_launchers": "byte-identical",
+  "C16_join_middle_inverse_output_tail": "byte-identical",
+  "PCIe_link_readout": "two fixed-setup current_link_speed/current_link_width reads; policy changes 0",
+  "input_coefficients_per_chunk": 16384,
+  "streams": 3,
+  "setup_events_main_aux": [
+    61,
+    37
+  ],
+  "scored_dependency_events_main_aux": [
+    17,
+    9
+  ],
+  "scored_kernel_launches_main_aux": [
+    16,
+    10
+  ],
+  "scored_H2D_calls_main_aux": [
+    8,
+    4
+  ],
+  "patch_check": "PASS",
+  "gpu_executions": 0,
+  "performance_samples": 0,
+  "native_cuda_compile": "root complete actual gate",
+  "native_execution": "root complete actual gate"
+}
