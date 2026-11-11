@@ -61,26 +61,25 @@ void batch_enqueue_operand(BatchState& batch, State& s, unsigned product,
     constexpr size_t first = cupqc::fwd_stage_1_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     const size_t coeffs = size_t(s.plan.n) * s.plan.l;
     const size_t planes = size_t(s.plan.n) * s.plan.pcount;
-    const size_t words = size_t(kInputCoefficients) * s.plan.l;
     const unsigned chunks = s.plan.n / kInputCoefficients;
     const auto input = batch.streams[kH2D];
     const auto compute = batch.streams[kCompute];
 
-    for (unsigned chunk = 0; chunk < chunks; ++chunk) {
-        const size_t offset = operand * coeffs + chunk * words;
-        const auto begin = profile ? Clock::now() : Clock::time_point{};
-        bytecrt_pack_operand(s.hostinput + offset, source + chunk * words, words);
-        if (profile)
-            host.pack_us += std::chrono::duration<double, std::micro>(Clock::now() - begin).count();
-        if (product == 0 && operand == 0 && chunk == 0)
-            batch_mark(batch, profile, kH2D, 0);
-        check(cudaMemcpyAsync(s.inputs + offset, s.hostinput + offset,
-                              words * sizeof(uint32_t), cudaMemcpyHostToDevice, input),
-              "batch input chunk");
-    }
+    // This encode waits for the complete operand. Pack/copy it in one unit
+    // to reduce CPU fork/join and DMA submissions; the other products overlap.
+    const size_t offset = operand * coeffs;
+    const auto begin = profile ? Clock::now() : Clock::time_point{};
+    bytecrt_pack_operand(s.hostinput + offset, source, coeffs);
+    if (profile)
+        host.pack_us += std::chrono::duration<double, std::micro>(Clock::now() - begin).count();
+    if (product == 0 && operand == 0)
+        batch_mark(batch, profile, kH2D, 0);
+    check(cudaMemcpyAsync(s.inputs + offset, s.hostinput + offset,
+                          coeffs * sizeof(uint32_t), cudaMemcpyHostToDevice, input),
+          "batch input operand");
     if (product + 1 == batch.batch && operand == 1)
         batch_mark(batch, profile, kH2D, 1);
-    // Four disjoint pinned slices are now queued. Full MT32 regains the
+    // The complete pinned operand is now queued. Full MT32 retains the
     // original grid occupancy; cross-product overlap supplies throughput.
     const auto ready = s.input_ready[operand][chunks - 1];
     check(cudaEventRecord(ready, input), "batch operand ready");
@@ -142,17 +141,15 @@ void batch_enqueue_output(BatchState& batch, State& s, unsigned product, bool pr
 void batch_drain_slot(State& s, std::vector<uint32_t>& output,
                       bool profile, BatchHostProfile& host) {
     const unsigned chunks = s.plan.n / kOutputCoefficients;
-    const size_t words = size_t(kOutputCoefficients) * s.plan.l;
-    for (unsigned chunk = 0; chunk < chunks; ++chunk) {
-        check(cudaEventSynchronize(s.copied[chunk]), "batch wait copied chunk");
-        const auto begin_time = profile ? Clock::now() : Clock::time_point{};
-        const uint32_t* begin = s.hostout + chunk * words;
-        output.insert(output.end(), begin, begin + words);
-        if (profile)
-            host.owned_us += std::chrono::duration<double, std::micro>(Clock::now() - begin_time).count();
-    }
-    // Last copied completes all input/compute/D2H ancestors. The final insert
-    // barrier completes this slot's owned bytes before any staging reuse.
+    const size_t words = size_t(s.plan.n) * s.plan.l;
+    check(cudaEventSynchronize(s.copied[chunks - 1]), "batch wait whole copied product");
+    const auto begin_time = profile ? Clock::now() : Clock::time_point{};
+    const uint32_t* begin = s.hostout;
+    output.insert(output.end(), begin, begin + words);
+    if (profile)
+        host.owned_us += std::chrono::duration<double, std::micro>(Clock::now() - begin_time).count();
+    // The final D2H event completes this product's ancestors. The single owned
+    // copy barrier completes every byte before this staging slot is reused.
 }
 
 }  // namespace

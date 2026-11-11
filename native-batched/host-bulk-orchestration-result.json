@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "scope": "actual lifted bulk wrapper; scaled arithmetic, deferred DMA/events, real host control flow",
+  "B1_path": true,
+  "B128_calls": 2,
+  "full_owned_products": 256,
+  "per_B128_counts": {
+    "pack": 256,
+    "H2D": 256,
+    "D2H": 512,
+    "encode": 256,
+    "forward": 256,
+    "middle": 128,
+    "inverse": 128,
+    "CRT": 512,
+    "owned_sync_insert": 128
+  },
+  "init_cleanup_checked": true,
+  "source_extracted": true,
+  "GPU_execution": 0
+}

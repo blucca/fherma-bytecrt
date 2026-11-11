@@ -9,7 +9,8 @@ The new independent [batched artifact](native-batched/) handles **128 products a
 - The official row is ranked and participation is submitted. The legacy qualifying-runs query still applies 20 seeds and both old-spec points; the result preserves that mismatch, and it has been reported to FHERMA.
 - [B0 serial native result](native-batched/native-b0p-result.json) · [four-slot native result](native-batched/native-s1p-result.json)
 - Measured streaming source: [`aca09d6`](https://github.com/blucca/fherma-bytecrt/tree/aca09d65fe30e6c9497f7a0f038e9a9f4b7384df/native-batched); serial source: [`35d3956`](https://github.com/blucca/fherma-bytecrt/tree/35d3956b71f213aea8d1b5cd4281a8ec9f0952e2/native-batched)
-- [Non-temporal host traffic: paired CPU gate and full owned-output check](native-batched/host-copy-cpu.md) — current NT candidate, native measurement pending; the official S1 baseline is pinned separately.
+- [Whole-operand and whole-owned-product service](native-batched/host-bulk-method.md) — current complete native candidate, source and results are measured separately.
+- [Non-temporal host traffic: paired CPU gate and full owned-output check](native-batched/host-copy-cpu.md) — NT passes exact native output; its 0.824% whole-call reduction stops at the 5% gate. The official S1 baseline is pinned separately.
 - [Why large owned outputs need a separate allocation measurement](native-batched/owned-output-cpu.md) · [real generated-harness lifecycle check](native-batched/harness-heap-cpu.md)
 
 

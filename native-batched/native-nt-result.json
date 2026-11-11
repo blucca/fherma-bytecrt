@@ -1,0 +1,32 @@
+{
+  "source": "413497c8b007f26685d54d86d62809e9ee55db4a",
+  "job": "6af4d7d1f0e60648c7862d15",
+  "snapshot": "6af4d7d1f0e60648c7862cf9",
+  "run": "6af4db6f9d7744dd17c691ea",
+  "finished_at": "2026-11-11T21:19:21.401Z",
+  "cases": 2,
+  "passed": 2,
+  "B1_ms": 1.614448,
+  "B128_ms": 89.068534,
+  "native_reduction_percent": 0.8241960074840793,
+  "native_5_percent_gate_passed": false,
+  "current_fastest_official_ms": 74.668181,
+  "below_current_fastest": false,
+  "native_fresh_seeds_per_point": 1,
+  "unscored_first_warmup": {
+    "whole_ms": 100.366593,
+    "pack_ms": 67.732291,
+    "owned_ms": 21.542976,
+    "H2D_coverage_ms": 98.720383,
+    "compute_coverage_ms": 99.621475,
+    "D2H_coverage_ms": 98.83977499999999
+  },
+  "process_memory_mb_max": 9128.9,
+  "GPU_allocated_memory_MB_max": 1915,
+  "target_link": {
+    "speed_GT_s": 32,
+    "width": 16,
+    "local_CPU_list": "0-23"
+  },
+  "status": "exact_native_whole_gate_failed_formal_not_dispatched"
+}

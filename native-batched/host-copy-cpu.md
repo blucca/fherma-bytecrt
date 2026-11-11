@@ -21,7 +21,7 @@ The preregistered streaming gate weights pack/owned ratios by the measured basel
 
 The same bounded run then tests the complete **1,845,493,760-byte** B128 output with standard `std::vector` reserve/clear/insert, retained ordinary heap pages, one first-touch warmup and three AB/BA/AB pairs. All seven calls pass bytewise verification for every product. The post-warm paired median latency reduction is **62.86%**. Total CPU experiment wall time including compilation is **8.21 seconds**.
 
-[Full raw paired data](host-copy-cpu-result.json). These CPU measurements cover ordinary buffers and two workers. The candidate's actual pinned-buffer/DMA, twelve-worker and CUDA whole-call result is a separate native measurement. The officially measured baseline remains [`aca09d6`](https://github.com/blucca/fherma-bytecrt/tree/aca09d65fe30e6c9497f7a0f038e9a9f4b7384df/native-batched), three fresh seeds, 89.648935 ms.
+[Full raw paired data](host-copy-cpu-result.json). These CPU measurements cover ordinary buffers and two workers. The actual pinned-buffer/DMA, twelve-worker and CUDA whole-call measurement follows below. The officially measured baseline remains [`aca09d6`](https://github.com/blucca/fherma-bytecrt/tree/aca09d65fe30e6c9497f7a0f038e9a9f4b7384df/native-batched), three fresh seeds, 89.648935 ms.
 
 ## Reproduce
 
@@ -40,3 +40,11 @@ g++ -O3 -mavx2 -std=c++17 -fopenmp -Wl,--wrap=memcpy -Wl,--wrap=memmove   host-c
 ```
 
 The original exhaustive primitive suite remains available as `./cpu-nt-probe --semantics` after compilation; it covers offsets 0–63, worker/chunk lengths and guards. The production integration check passes 27 cases.
+
+## Actual target: the standalone NT whole-call gate stops
+
+The source [`413497c`](https://github.com/blucca/fherma-bytecrt/tree/413497c8b007f26685d54d86d62809e9ee55db4a/native-batched) passes **B1 and B128 exact**, one fresh scored seed per point. B1 is **1.614448 ms**, B128 **89.068534 ms**, versus the four-slot native baseline's **89.808734 ms**: **0.824% lower**. The preregistered native improvement gate requires at least 5%, so the standalone NT candidate stops before an additional official measurement. [Native result](native-nt-result.json).
+
+The first unscored B128 warmup reports pack **67.732 ms**, owned **21.543 ms**, whole **100.367 ms**. The earlier S1 first warmup reports 58.295/28.639/104.421 ms respectively. These are separate actual target runs; the CPU paired dataset above retains its two-worker ordinary-buffer scope. Target locality reports the full permitted CPU list 0–23 local to the GPU, PCIe 32 GT/s ×16, and two asynchronous transfer engines.
+
+The next complete method evaluates service granularity: full 14.4 MB operand packing/H2D and one standard-owned product insert, with the existing four-slot arithmetic and four-chunk CRT/D2H retained. The official three-seed S1 result remains 89.648935 ms at its pinned source.
