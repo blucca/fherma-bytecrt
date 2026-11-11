@@ -57,6 +57,18 @@ The next artifact is one fused MMA/CRT kernel with a coalesced output handoff, i
 
 The benchmark reference is the [official cuPQC example](https://github.com/fherma-ai/polynomial-mult-cupqc-example), with the generated host interface. Original reference code: Apache-2.0.
 
+### Locked unsigned MMA fragments
+
+[`fragment_check.py`](fragment_check.py) implements the unsigned `mma.sync.aligned.m16n8k32.row.col.s32.u8.u8.s32` register contract from [CUDA 12.8.1 / PTX ISA 8.7, §9.7.14.5.10](https://docs.nvidia.com/cuda/archive/12.8.1/parallel-thread-execution/index.html#warp-level-matrix-fragment-mma-16832).
+
+For `g=lane/4`, `k=4*(lane%4)`, the four A registers start at `(g,k)`, `(g+8,k)`, `(g,k+16)`, `(g+8,k+16)`. Each packs four consecutive unsigned bytes. B uses two registers in column `g`, starting at rows `k` and `k+16`; C/D hold two columns in row `g`, then the same columns in row `g+8`.
+
+```sh
+python3 -B fragment_check.py
+```
+
+The CPU check covers every A/B/C cell exactly once (512/256/128), independently inverts the register coordinates, reconstructs byte-packed operands and checks all 128 integer `A·B+C` outputs against a direct matrix oracle. Fixtures include bytes above 127. [`fragment-result.json`](fragment-result.json) records the result; native GPU execution follows as a separate step.
+
 ## Host output construction probe
 
 The generated official interface returns `std::vector<uint32_t>`, and only `fherma_run` is timed. A CPU-only probe compares `resize` followed by an opaque overwrite with direct range construction from an already available staging buffer. Both produce identical complete output vectors.

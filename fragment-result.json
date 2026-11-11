@@ -1,0 +1,11 @@
+{
+  "status": "PASS",
+  "ptx": "8.7",
+  "cuda_docs": "12.8.1",
+  "A_cells": 512,
+  "B_cells": 256,
+  "C_cells": 128,
+  "inverse_and_byte_reconstruction": true,
+  "integer_mma_cells": 128,
+  "native_GPU_executions": 0
+}
