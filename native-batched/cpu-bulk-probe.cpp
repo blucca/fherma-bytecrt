@@ -1,4 +1,4 @@
-// Round 543 private CPU experiment. Production files are unchanged.
+// CPU-only paired granularity comparison; NT is the common copy backend.
 #include <algorithm>
 #include <chrono>
 #include <climits>
