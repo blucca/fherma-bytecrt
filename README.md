@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **3.733 ms / 1.146 ms** ([C7 result](native-smoke/native-c7-result.json)), including all input/output conversion and transfers. The primary call improves 43.4% from the initial complete implementation. The next measured bottleneck is the returned-vector range copy.
+**Current result:** the complete exact pipeline passes both official-size outputs on RTX PRO 6000 Blackwell, at three fresh measured seeds per point. Latest complete-call medians are **2.748 ms / 1.168 ms** ([C8 result](native-smoke/native-c8-result.json)), including all input/output conversion and transfers. The primary call improves 58.4% from the initial complete implementation. Parallel returned-vector copying reduces second-warm-up construction from 985 to 188 µs. Input packing/H2D and GPU encoding are the next measured bottlenecks.
 
 ```sh
 python3 -B reference.py
@@ -108,3 +108,7 @@ The current iteration replaces a runtime division in the forward twist with an e
 ## Coalesced first NTT
 
 The next complete native method writes RNS inputs directly in staged `[prime][id][i]` order and loads the first NTT’s input/forward-twist powers contiguously. SDK stage-local ids, arithmetic and normal intermediate stores stay unchanged. Input and normal-intermediate buffers are disjoint, adding 57 / 14.25 MiB of GPU workspace. [CPU layout proof](native-smoke/coalesced-ntt-cpu-result.json) checks every index/shared-value identity at both sizes and a small independent full convolution. [C7 native](native-smoke/native-c7-result.json) passes 3/3 fresh seeds at both full points: 3.733 ms / 1.146 ms whole-call. Second warm-up forward NTT drops from 372 to 150 µs at the primary point and from 96 to 39 µs at the auxiliary point. Primary pinned H2D rose in this run; phase and whole-call effects stay separately recorded. The next measured bottleneck is the primary returned-vector range copy, about 985 µs in the second warm-up.
+
+## Bounded parallel standard-vector copy
+
+[C8](native-smoke/native-c8-result.json) preserves standard vector allocation and ownership, and uses GNU host-link wrappers to copy disjoint ranges of at least 8 MiB in twelve OpenMP chunks. Overlapping moves and smaller ranges stay with libc. Both full outputs pass 3/3 fresh seeds; primary whole-call median improves 26.4% from C7. The auxiliary remains on the small-copy path and measures 1.168 ms, versus C7’s 1.146 ms. The next candidate changes only the fixed write-only input staging allocation to CUDA write-combined memory, retaining all per-input work inside the timer.

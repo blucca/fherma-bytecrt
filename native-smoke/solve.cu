@@ -148,7 +148,8 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
     check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
-    check(cudaMallocHost(&s->hostinput, 2 * coeffs * sizeof(uint32_t)), "allocate pinned input");
+    // CPU write-only staging; CUDA H2D consumes it, and cudaFreeHost handles cleanup.
+    check(cudaHostAlloc(&s->hostinput, 2 * coeffs * sizeof(uint32_t), cudaHostAllocWriteCombined), "allocate pinned input");
     fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes, s->plan.powers_mont));
     std::vector<uint64_t> encode_mu(s->plan.pcount);
     for (unsigned j = 0; j < s->plan.pcount; ++j) encode_mu[j] = UINT64_MAX / s->plan.primes[j];

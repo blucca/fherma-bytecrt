@@ -1,0 +1,139 @@
+{
+  "status": "PASS",
+  "source_commit": "00a249207fcbd6d80c66c2ac3e5148db228535c6",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.002728322,
+        "median": 0.002747544,
+        "mean": 0.0027587303333333336,
+        "max": 0.002800325
+      },
+      "fresh_seeds": [
+        8,
+        39,
+        69
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 3,
+      "seeds": 3,
+      "whole_call_seconds": {
+        "min": 0.001161427,
+        "median": 0.001168431,
+        "mean": 0.0011742019999999998,
+        "max": 0.001192748
+      },
+      "fresh_seeds": [
+        1,
+        4,
+        27
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 403.424,
+            "forward1": 154.4,
+            "fused-middle": 104.384,
+            "inverse-weighted": 199.616,
+            "G1": 297.376,
+            "H2D": 695.168
+          },
+          "host_us": {
+            "input-pack": 556.877,
+            "H2D+product": 1884.307,
+            "D2H": 265.959,
+            "output-construct": 786.573
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 389.44,
+            "forward1": 151.52,
+            "fused-middle": 100.352,
+            "inverse-weighted": 194.56,
+            "G1": 294.944,
+            "H2D": 646.944
+          },
+          "host_us": {
+            "input-pack": 524.603,
+            "H2D+product": 1803.173,
+            "D2H": 262.808,
+            "output-construct": 187.512
+          }
+        }
+      ]
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "warmups": [
+        {
+          "warmup": 1,
+          "GPU_us": {
+            "encode": 127.968,
+            "forward1": 44.16,
+            "fused-middle": 30.688,
+            "inverse-weighted": 52.48,
+            "G1": 104.48,
+            "H2D": 210.464
+          },
+          "host_us": {
+            "input-pack": 626.749,
+            "H2D+product": 597.6,
+            "D2H": 77.744,
+            "output-construct": 914.153
+          }
+        },
+        {
+          "warmup": 2,
+          "GPU_us": {
+            "encode": 119.424,
+            "forward1": 40.928,
+            "fused-middle": 24.608,
+            "inverse-weighted": 51.168,
+            "G1": 102.432,
+            "H2D": 228.64
+          },
+          "host_us": {
+            "input-pack": 255.006,
+            "H2D+product": 587.203,
+            "D2H": 74.414,
+            "output-construct": 253.962
+          }
+        }
+      ]
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T10:51:54.507Z",
+  "measurement_scope": "complete native diagnostic, 3 fresh seeds per full point",
+  "changes": "Bounded parallel memcpy/memmove for large disjoint standard-vector copies; allocation and all bytes remain timed"
+}
