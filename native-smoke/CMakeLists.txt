@@ -32,7 +32,7 @@ else()
   set(CUPQC_SDK_DIR /usr/local/cupqc-sdk)
 endif()
 
-add_executable(solution main.cpp solve.cu mma-smoke.cu)
+add_executable(solution main.cpp solve.cu mma-smoke.cu g1-smoke.cu)
 
 target_include_directories(solution PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}

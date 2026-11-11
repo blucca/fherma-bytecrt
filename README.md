@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** the independent CPU model passes at both FHERMA polynomial-multiplication geometries, using three synthetic full-width moduli and 18 coefficient fixtures per geometry. Native GPU compilation, complete official convolutions and target latency are pending.
+**Current result:** the independent CPU model passes at both FHERMA polynomial-multiplication geometries, using three synthetic full-width moduli and 18 coefficient fixtures per geometry. The native unsigned-MMA fragment check also passes on the target Blackwell GPU. Complete ByteCRT convolutions and competitive whole-call timing are the next milestones.
 
 ```sh
 python3 -B reference.py
@@ -69,7 +69,7 @@ python3 -B fragment_check.py
 
 The CPU check covers every A/B/C cell exactly once (512/256/128), independently inverts the register coordinates, reconstructs byte-packed operands and checks all 128 integer `A·B+C` outputs against a direct matrix oracle. Fixtures include bytes above 127. [`fragment-result.json`](fragment-result.json) records the result; native GPU execution follows as a separate step.
 
-[`native-smoke/`](native-smoke/) is the runnable next step: one full warp executes the unsigned MMA on fixed matrices during setup, and a host oracle checks all 128 cells. An attributed upstream cuPQC schoolbook implementation supplies the complete polynomial answer to the official harness. Target compilation and this new native check are pending; the CPU model and the full competitive pipeline have separate evidence scopes.
+[`native-smoke/`](native-smoke/) is the runnable next step: one full warp executes the unsigned MMA on fixed matrices during setup, and a host oracle checks all 128 cells. An attributed upstream cuPQC schoolbook implementation supplies the complete polynomial answer to the official harness. On the target RTX PRO 6000 Blackwell Server GPU (CUDA 12.8.61 / GCC 13.3), all 128 native integer cells passed; the official N1024/W128 upstream polynomial answer passed 1/1 measured cases after two warm-ups. [`native-c1-result.json`](native-smoke/native-c1-result.json) records this stage. The full competitive pipeline follows separately.
 
 ## Host output construction probe
 

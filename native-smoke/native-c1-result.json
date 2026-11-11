@@ -1,0 +1,21 @@
+{
+  "status": "PASS",
+  "source_commit": "df584c6227ee6e0282539be2856c02c5a827ca82",
+  "native_unsigned_MMA_cells_checked": 128,
+  "fixture": "fixed setup A16x32/B32x8/C16x8, includes unsigned bytes >127",
+  "GPU": "NVIDIA RTX PRO 6000 Blackwell Server Edition · 97887 MiB",
+  "CPU": "Intel(R) Xeon(R) 6776P",
+  "cores": 24,
+  "compiler": "GCC13.3 / NVIDIA CUDA12.8.61",
+  "baseline_polynomial": {
+    "N": 1024,
+    "W": 128,
+    "passed": 1,
+    "measured_cases": 1,
+    "warmups": 2,
+    "whole_call_seconds": 0.000927564
+  },
+  "setup_seconds": 0.25975374,
+  "scope": "native MMA fragment execution and attributed upstream schoolbook polynomial correctness",
+  "finished_at": "2026-11-11T08:31:29.798Z"
+}
