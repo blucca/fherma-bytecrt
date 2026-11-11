@@ -17,6 +17,8 @@ struct RnsPlan {
     std::vector<uint32_t> n_inverse, crt_inverse, powers_mont;
     // Column-major: 7*l columns, kpad bytes per column (including zero padding).
     std::vector<uint8_t> b_matrix;
+    // Fixed production MT32: 4*l columns of (256^a * weight_j) mod q.
+    std::vector<uint8_t> b_byte_matrix;
     std::vector<double> invp;
 };
 
@@ -294,6 +296,28 @@ inline RnsPlan make_rns_plan(unsigned N, unsigned W, const std::vector<uint32_t>
             }
             for (unsigned byte = 4 * terms; byte < plan.kpad; ++byte)
                 assert(plan.b_matrix[column + byte] == 0);
+        }
+    }
+    // Each input byte gets its own q-reduced fixed weight. Alpha is the last
+    // term and uses the same (-product) mod q weight as the B7 fixture path.
+    // z=sum(byte_a(term_j)*W[j,a]) < 4*terms*255*q < 2^(W+17).
+    assert(uint64_t{4} * terms * 255 < (uint64_t{1} << 17));
+    plan.b_byte_matrix.assign(static_cast<std::size_t>(4 * plan.l) * plan.kpad, 0);
+    for (unsigned j = 0; j < terms; ++j) {
+        Words shifted = weights[j];
+        for (unsigned in_digit = 0; in_digit < 4; ++in_digit) {
+            for (unsigned limb = 0; limb < plan.l; ++limb) {
+                const uint32_t word = limb < shifted.size() ? shifted[limb] : 0;
+                for (unsigned out_digit = 0; out_digit < 4; ++out_digit) {
+                    const std::size_t column = static_cast<std::size_t>(4 * limb + out_digit) * plan.kpad;
+                    plan.b_byte_matrix[column + 4 * j + in_digit] =
+                        static_cast<uint8_t>(word >> (8 * out_digit));
+                }
+            }
+            if (in_digit < 3) {
+                mul_small(shifted, 256);
+                shifted = mod_q(shifted, q);
+            }
         }
     }
     return plan;

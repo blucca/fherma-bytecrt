@@ -195,7 +195,8 @@ __global__ void g1_crt16(const uint8_t* __restrict__ a,
     }
 }
 
-// Fixed MT32 G1: two m16 accumulator sets share every B register pair.
+// Fixed MT32 G1: B4 uses q-reduced per-input-byte weights, 14 limbs/group.
+// Two m16 accumulator sets share every B register pair.
 // All 32 coefficient lanes execute the existing alpha/carry/reducer path.
 template <unsigned W, unsigned L, unsigned P, unsigned Kpad, bool Transposed = false>
 __global__ void g1_crt32(const uint8_t* __restrict__ a,
@@ -209,7 +210,7 @@ __global__ void g1_crt32(const uint8_t* __restrict__ a,
                   "G1 full-width geometries");
     constexpr unsigned MT = 32, NT = 56, threads = 224;
     constexpr unsigned digit_stride = (L + 2) | 1;
-    constexpr unsigned groups = (L + 7) / 8;
+    constexpr unsigned groups = (L + 13) / 14;
     // Four padding words make the m16n8k32 A gather bank-bijective:
     // stride_words mod 32 is 28 (main) or 4 (aux), bank = g*stride+t.
     constexpr unsigned row_words = Kpad / 4;
@@ -254,6 +255,8 @@ __global__ void g1_crt32(const uint8_t* __restrict__ a,
     }
     __syncthreads();
 
+    // C=4*(P+1)*255 < 2^17: lo <= C*(2^32-1), carry <= C-1.
+    // Thus total fits u64; B4 already includes every input-byte shift.
     uint64_t carry = 0;
     for (unsigned group = 0; group < groups; ++group) {
         const unsigned b_col = group * NT + warp * 8 + g;
@@ -265,7 +268,7 @@ __global__ void g1_crt32(const uint8_t* __restrict__ a,
             const uint32_t a2 = *reinterpret_cast<const uint32_t*>(shared_a[g] + k + k_lane + 16);
             const uint32_t a3 = *reinterpret_cast<const uint32_t*>(shared_a[g + 8] + k + k_lane + 16);
             uint32_t b0 = 0, b1 = 0;
-            if (b_col < 7 * L) {
+            if (b_col < 4 * L) {
                 const uint8_t* column = b + b_col * Kpad + k + k_lane;
                 b0 = *reinterpret_cast<const uint32_t*>(column);
                 b1 = *reinterpret_cast<const uint32_t*>(column + 16);
@@ -297,20 +300,17 @@ __global__ void g1_crt32(const uint8_t* __restrict__ a,
         __syncthreads();
 
         if (tid < MT) {
-            for (unsigned local_limb = 0; local_limb < 8; ++local_limb) {
-                const unsigned limb = group * 8 + local_limb;
+            for (unsigned local_limb = 0; local_limb < 14; ++local_limb) {
+                const unsigned limb = group * 14 + local_limb;
                 if (limb < L) {
-                    const int32_t* sums = shared_c[tid] + 7 * local_limb;
+                    const int32_t* sums = shared_c[tid] + 4 * local_limb;
                     const uint64_t lo = uint64_t{static_cast<uint32_t>(sums[0])} +
                         (uint64_t{static_cast<uint32_t>(sums[1])} << 8) +
                         (uint64_t{static_cast<uint32_t>(sums[2])} << 16) +
                         (uint64_t{static_cast<uint32_t>(sums[3])} << 24);
-                    const uint64_t hi = uint64_t{static_cast<uint32_t>(sums[4])} +
-                        (uint64_t{static_cast<uint32_t>(sums[5])} << 8) +
-                        (uint64_t{static_cast<uint32_t>(sums[6])} << 16);
                     const uint64_t total = carry + lo;
                     digits[tid][limb] = static_cast<uint32_t>(total);
-                    carry = (total >> 32) + hi;
+                    carry = total >> 32;
                 }
             }
         }
