@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <omp.h>
+#include "nt-copy.hpp"
 
 extern "C" void* __real_memcpy(void*, const void*, std::size_t);
 extern "C" void* __real_memmove(void*, const void*, std::size_t);
@@ -23,13 +24,16 @@ void* parallel_copy(void* dest, const void* source, std::size_t bytes) {
     const std::size_t chunk_bytes = bytes / 12, extra = bytes % 12;
     auto* dst = static_cast<unsigned char*>(dest);
     const auto* src = static_cast<const unsigned char*>(source);
-#pragma omp parallel for num_threads(workers) schedule(static)
-    for (int task = 0; task < 12; ++task) {
-        const std::size_t chunk = static_cast<std::size_t>(task);
-        const std::size_t begin = chunk_bytes * chunk + std::min(extra, chunk);
-        const std::size_t count = chunk_bytes + (chunk < extra);
-        // --wrap resolves __real_memcpy directly to libc, terminating interception.
-        __real_memcpy(dst + begin, src + begin, count);
+#pragma omp parallel num_threads(workers)
+    {
+#pragma omp for schedule(static) nowait
+        for (int task = 0; task < 12; ++task) {
+            const std::size_t chunk = static_cast<std::size_t>(task);
+            const std::size_t begin = chunk_bytes * chunk + std::min(extra, chunk);
+            const std::size_t count = chunk_bytes + (chunk < extra);
+            bytecrt_nt_copy_unfenced(dst + begin, src + begin, count);
+        }
+        _mm_sfence();
     }
     return dest;  // Implicit OpenMP barrier has completed every byte chunk.
 }

@@ -1,0 +1,47 @@
+{
+  "status": "PASS",
+  "scope": "actual shared wrapper/helper plus actual core State/allocate/destructor; scaled 8x2 arithmetic, deferred DMA/events, real host control flow",
+  "B1_path": true,
+  "B128_calls": 2,
+  "full_owned_products": 256,
+  "shared_fixed_fields": [
+    "tw",
+    "inv_tw",
+    "psi",
+    "untwist_crt",
+    "encode_b",
+    "encode_mu",
+    "q",
+    "primes",
+    "n_inverse",
+    "b_matrix",
+    "invp",
+    "constants"
+  ],
+  "shared_scratch_fields": [
+    "ab",
+    "ab_t",
+    "c",
+    "weighted"
+  ],
+  "owner_device_allocations": 18,
+  "borrower_device_allocations": 2,
+  "single_free_both_destruction_orders": true,
+  "private_DMA_IO_events": true,
+  "fixed_tables_unchanged": true,
+  "previous_owned_output_unchanged": true,
+  "per_B128_counts": {
+    "pack": 256,
+    "H2D": 256,
+    "D2H": 512,
+    "encode": 256,
+    "forward": 256,
+    "middle": 128,
+    "inverse": 128,
+    "CRT": 512,
+    "owned_sync_insert": 128
+  },
+  "init_cleanup_checked": true,
+  "source_extracted": true,
+  "GPU_execution": 0
+}

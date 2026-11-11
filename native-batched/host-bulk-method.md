@@ -33,4 +33,4 @@ g++ -O3 -mavx2 -std=c++17 -fopenmp -Wl,--wrap=memcpy -Wl,--wrap=memmove \
 
 The immutable `batch-bulk-host-candidate` source passes B1/B128 exact, one fresh seed per point: **1.660239 / 89.033466 ms**. B128 improves **0.03937%** over the standalone NT native baseline. The 5% gate fails and the bulk formula stops before an official measurement. [Native result](native-bulk-result.json). Its first warmup reports whole 89.317 ms, pack 50.655 ms, owned 14.358 ms, and overlapping H2D/compute/D2H coverage 87.040/88.254/87.549 ms. The selected S1 source remains qualified independently.
 
-For the production NT/bulk copy checks above, use the corresponding immutable experiment tag; main retains the selected S1 libc backend. The two CPU protocol files are standalone reproducers.
+For the production NT/bulk copy checks above, use the corresponding immutable experiment tag. The shared-compute GPU candidate reuses this host backend with its own complete native gate; the selected S1 official source stays pinned. The two CPU protocol files are standalone reproducers.
