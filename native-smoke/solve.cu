@@ -1,7 +1,11 @@
 // SPDX-License-Identifier: Apache-2.0
 // Exact wide negacyclic product: coefficient RNS -> cuPQC staged NTT -> ByteCRT.
 // Fixed roots, moduli and byte weights are prepared solely from Point in init.
+#ifdef BYTECRT_BATCHED
+#include "../native-batched/fherma.h"
+#else
 #include "fherma.h"
+#endif
 #include "rns-plan.hpp"
 #include "rns-encode.cuh"
 #include "rns-encode-mma.cuh"
@@ -74,6 +78,8 @@ void print_setup_attribute(const char* label, cudaDeviceAttr attribute) {
 
 struct State {
     bytecrt::RnsPlan plan;
+    unsigned batch = 1;
+    unsigned profile_products = 2;
     uint32_t* inputs = nullptr;
     uint32_t* ab = nullptr;
     uint32_t* ab_t = nullptr;  // disjoint transposed input for coalesced forward stage 1
@@ -288,6 +294,11 @@ void enqueue_output(State& s, bool profile) {
 
 void* fherma_init(const fherma::Point& p) {
     auto s = std::make_unique<State>();
+#ifdef BYTECRT_BATCHED
+    if (p.B == 0 || p.B > 128) throw std::runtime_error("ByteCRT batch coverage B=1..128");
+    s->batch = p.B;
+    s->profile_products = p.B == 1 ? 1 : 2;
+#endif
     s->plan = bytecrt::make_rns_plan(p.N, p.W, p.q.data);
     if (p.L != s->plan.l) throw std::runtime_error("ByteCRT point L mismatch");
     const size_t coeffs = size_t(p.N) * p.L;
@@ -385,34 +396,29 @@ void* fherma_init(const fherma::Point& p) {
     return s.release();
 }
 
-fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
-    auto& s = *static_cast<State*>(state);
+// One contiguous pair appends its canonical product to a caller-owned vector.
+// Both specifications use this exact path; only the outer batch loop differs.
+static void append_product(State& s, const uint32_t* a, const uint32_t* b,
+                           std::vector<uint32_t>& output) {
     const size_t coeffs = size_t(s.plan.n) * s.plan.l;
     const unsigned chunks = s.plan.n / kOutputCoefficients;
     const size_t chunk_words = size_t(kOutputCoefficients) * s.plan.l;
-    if (in.a.data.size() != coeffs || in.b.data.size() != coeffs)
-        throw std::runtime_error("ByteCRT input coefficient count");
     // Warm-ups report phases; scored calls record only required dependency events.
     const unsigned call = s.calls++;
-    const bool profile = call < 2;
+    const bool profile = call < s.profile_products;
     const auto t0 = Clock::now();
     InputHostProfile host_input;
     host_input.front_packed = t0;
     if (s.plan.n == 65536) {
-        enqueue_operand<65536, 114>(s, profile, 0, in.a.data.data(), host_input);
-        enqueue_operand<65536, 114>(s, profile, 1, in.b.data.data(), host_input);
+        enqueue_operand<65536, 114>(s, profile, 0, a, host_input);
+        enqueue_operand<65536, 114>(s, profile, 1, b, host_input);
         finish_product<65536, 114, 480>(s, profile);
     } else {
-        enqueue_operand<32768, 57>(s, profile, 0, in.a.data.data(), host_input);
-        enqueue_operand<32768, 57>(s, profile, 1, in.b.data.data(), host_input);
+        enqueue_operand<32768, 57>(s, profile, 0, a, host_input);
+        enqueue_operand<32768, 57>(s, profile, 1, b, host_input);
         finish_product<32768, 57, 256>(s, profile);
     }
     const auto output_begin = Clock::now();
-    fherma::Outputs out;
-    out.c.shape = {static_cast<int64_t>(s.plan.n), static_cast<int64_t>(s.plan.l)};
-    // reserve owns the full allocation; insert constructs each copied range
-    // through the standard vector API, without a full zero-fill pass.
-    out.c.data.reserve(coeffs);
     enqueue_output(s, profile);
     const auto t2 = Clock::now();
     auto t3 = t2;
@@ -420,7 +426,7 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
         check(cudaEventSynchronize(s.copied[chunk]), "wait for copied output chunk");
         if (chunk + 1 == chunks) t3 = Clock::now();
         const uint32_t* begin = s.hostout + chunk * chunk_words;
-        out.c.data.insert(out.c.data.end(), begin, begin + chunk_words);
+        output.insert(output.end(), begin, begin + chunk_words);
     }
     // Last copied implies all B CRT chunks and the joined A work completed;
     // the last standard insert barrier completes every returned owned word.
@@ -495,6 +501,26 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
             input_chunks, kInputCoefficients, host_input.enqueue_coverage_us[0],
             host_input.enqueue_coverage_us[1], call + 1);
     }
+}
+
+fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
+    auto& s = *static_cast<State*>(state);
+    const size_t words = size_t(s.plan.n) * s.plan.l;
+    const size_t total = words * s.batch;
+    if (in.a.data.size() != total || in.b.data.size() != total)
+        throw std::runtime_error("ByteCRT input coefficient count");
+    fherma::Outputs out;
+#ifdef BYTECRT_BATCHED
+    out.c.shape = {int64_t(s.batch), int64_t(s.plan.n), int64_t(s.plan.l)};
+#else
+    out.c.shape = {int64_t(s.plan.n), int64_t(s.plan.l)};
+#endif
+    // All pair inputs are contiguous pointer ranges; reserve owns the complete
+    // result once, and standard insert constructs each completed product.
+    out.c.data.reserve(total);
+    for (unsigned j = 0; j < s.batch; ++j)
+        append_product(s, in.a.data.data() + size_t(j) * words,
+                       in.b.data.data() + size_t(j) * words, out.c.data);
     return out;
 }
 
