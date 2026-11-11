@@ -90,3 +90,7 @@ A concrete native experiment is fixed pinned D2H staging plus range construction
 G1 passes all six fixed setup fixtures on the RTX PRO 6000 Blackwell Server GPU: 36 signed full-width coefficients plus 60 zero rows, 3,984 canonical output words checked. Both FHERMA widths are covered, with FP64 centered alpha, unsigned MMA, limb carry and near-power reduction; UINT32_MAX gap exercises products beyond 64 bits. [Native G1 result](native-smoke/native-c2-result.json).
 
 The complete polynomial pipeline now proceeds to cuPQC staged RNS NTT, coefficient encoding and whole-call measurement. The current timed polynomial answer is the attributed upstream schoolbook at the small bring-up point.
+
+### Runtime-prime staged NTT gate
+
+[Native NTT integration](native-smoke/ntt-pipeline.cuh) uses cuPQC 0.6 M256/Block128 at both challenge sizes. A fused middle stage keeps both forward spectral tiles and the product in shared memory through the first inverse stage. [The fixed setup oracle](native-smoke/ntt-smoke.cu) compares all 196,608 residues at two real RNS primes against an independent CPU radix-2 product, whose small-size result is checked against schoolbook. Actual sm120 compilation/execution is the next gate; the prior G1 native result remains coefficient-level. The SDK remains an external dependency.

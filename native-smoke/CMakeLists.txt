@@ -32,7 +32,7 @@ else()
   set(CUPQC_SDK_DIR /usr/local/cupqc-sdk)
 endif()
 
-add_executable(solution main.cpp solve.cu mma-smoke.cu g1-smoke.cu)
+add_executable(solution main.cpp solve.cu mma-smoke.cu g1-smoke.cu ntt-smoke.cu)
 
 target_include_directories(solution PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -51,4 +51,6 @@ target_compile_options(solution PRIVATE
 target_link_options(solution PRIVATE
   $<DEVICE_LINK:-arch=${FHERMA_CUDA_ARCH};-dlto>)
 
-target_link_libraries(solution PRIVATE ${CUPQC_SDK_DIR}/lib/libcupqc-bigint.a)
+target_link_libraries(solution PRIVATE
+  ${CUPQC_SDK_DIR}/lib/libcupqc-bigint.a
+  ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a)

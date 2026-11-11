@@ -31,3 +31,7 @@ CUDA 12.8.61 / GCC 13.3 on RTX PRO 6000 Blackwell Server: native unsigned-MMA fi
 The integrated G1 check is `g1-smoke.cu`, using `g1-crt.cuh`: MT16, seven full warps, unsigned MMA, FP64 centered alpha, limb carry and near-power reduction with split high×gap. Source-extracted CPU reducer and fixture checks pass all 3,984 words; native compilation and all six fixtures pass on the target (CUDA12.8.61/GCC13.3). The G1 setup prints one PASS per fixture and a 36-coefficient summary. This fixed setup check has its own scope; the timed polynomial answer is still the upstream schoolbook.
 
 [Actual G1 target result](native-c2-result.json): 3,984 words PASS, with both full widths and cross-64-bit high-product cases.
+
+## Staged NTT native gate
+
+`ntt-pipeline.cuh` binds cuPQC 0.6 runtime-prime uint32 staged NTT (M256, 128 threads), with a shared-memory middle pass that fuses two forward second stages, pointwise multiplication and the first inverse stage. `ntt-smoke.cu` checks N65536 and N32768 at two real 31-bit RNS primes against an independent ordinary radix-2 CPU negacyclic product. All 196,608 residues are compared; an N16 schoolbook check validates the CPU oracle. This new sm120 compile/exact gate is pending the actual target run. Wide coefficient encoding, weighted-residue packing and complete two-point latency follow in the full implementation.

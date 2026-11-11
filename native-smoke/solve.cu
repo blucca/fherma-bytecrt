@@ -29,6 +29,7 @@ using namespace cupqc;
 // Fixed setup fixture for the original ByteCRT unsigned-MMA register layout.
 void bytecrt_mma_smoke();
 void bytecrt_g1_smoke();
+void bytecrt_ntt_smoke();
 
 namespace {
 
@@ -112,6 +113,7 @@ void* fherma_init(const fherma::Point& p) {
                      cudaMemcpyHostToDevice), "copy q");
     bytecrt_mma_smoke();
     bytecrt_g1_smoke();
+    bytecrt_ntt_smoke();
     return s;
 }
 
