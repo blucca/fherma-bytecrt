@@ -1,0 +1,197 @@
+{
+  "status": "PASS",
+  "scope": "source-extracted CPU arithmetic and CUDA tile emulation; Python whole-coefficient integer modulo",
+  "header": "products/fherma-bytecrt/native-smoke/rns-encode.cuh",
+  "header_sha256": "a9be3a744d93d0de151bcdbbefb6de86992af30316d4682ef1bf3760c2eb63db",
+  "compiler": "c++",
+  "flags": [
+    "-std=c++17",
+    "-O2",
+    "-g",
+    "-Wall",
+    "-Wextra",
+    "-pedantic",
+    "-Wno-unknown-pragmas",
+    "-fsanitize=address,undefined",
+    "-fno-omit-frame-pointer"
+  ],
+  "gpu_executions": 0,
+  "primes": [
+    2013265921,
+    2130706433
+  ],
+  "montgomery_cases": 100090,
+  "montgomery_subtractions": 24408,
+  "encoded_cases": 24,
+  "encoded_words": 68742,
+  "cases": [
+    {
+      "N": 1,
+      "L": 55,
+      "P": 114,
+      "mode": "zero",
+      "words_checked": 228
+    },
+    {
+      "N": 1,
+      "L": 55,
+      "P": 114,
+      "mode": "all_ff",
+      "words_checked": 228
+    },
+    {
+      "N": 1,
+      "L": 55,
+      "P": 114,
+      "mode": "random_full_u32",
+      "words_checked": 228
+    },
+    {
+      "N": 16,
+      "L": 55,
+      "P": 114,
+      "mode": "zero",
+      "words_checked": 3648
+    },
+    {
+      "N": 16,
+      "L": 55,
+      "P": 114,
+      "mode": "all_ff",
+      "words_checked": 3648
+    },
+    {
+      "N": 16,
+      "L": 55,
+      "P": 114,
+      "mode": "random_full_u32",
+      "words_checked": 3648
+    },
+    {
+      "N": 17,
+      "L": 55,
+      "P": 114,
+      "mode": "zero",
+      "words_checked": 3876
+    },
+    {
+      "N": 17,
+      "L": 55,
+      "P": 114,
+      "mode": "all_ff",
+      "words_checked": 3876
+    },
+    {
+      "N": 17,
+      "L": 55,
+      "P": 114,
+      "mode": "random_full_u32",
+      "words_checked": 3876
+    },
+    {
+      "N": 33,
+      "L": 55,
+      "P": 114,
+      "mode": "zero",
+      "words_checked": 7524
+    },
+    {
+      "N": 33,
+      "L": 55,
+      "P": 114,
+      "mode": "all_ff",
+      "words_checked": 7524
+    },
+    {
+      "N": 33,
+      "L": 55,
+      "P": 114,
+      "mode": "random_full_u32",
+      "words_checked": 7524
+    },
+    {
+      "N": 1,
+      "L": 28,
+      "P": 57,
+      "mode": "zero",
+      "words_checked": 114
+    },
+    {
+      "N": 1,
+      "L": 28,
+      "P": 57,
+      "mode": "all_ff",
+      "words_checked": 114
+    },
+    {
+      "N": 1,
+      "L": 28,
+      "P": 57,
+      "mode": "random_full_u32",
+      "words_checked": 114
+    },
+    {
+      "N": 16,
+      "L": 28,
+      "P": 57,
+      "mode": "zero",
+      "words_checked": 1824
+    },
+    {
+      "N": 16,
+      "L": 28,
+      "P": 57,
+      "mode": "all_ff",
+      "words_checked": 1824
+    },
+    {
+      "N": 16,
+      "L": 28,
+      "P": 57,
+      "mode": "random_full_u32",
+      "words_checked": 1824
+    },
+    {
+      "N": 17,
+      "L": 28,
+      "P": 57,
+      "mode": "zero",
+      "words_checked": 1938
+    },
+    {
+      "N": 17,
+      "L": 28,
+      "P": 57,
+      "mode": "all_ff",
+      "words_checked": 1938
+    },
+    {
+      "N": 17,
+      "L": 28,
+      "P": 57,
+      "mode": "random_full_u32",
+      "words_checked": 1938
+    },
+    {
+      "N": 33,
+      "L": 28,
+      "P": 57,
+      "mode": "zero",
+      "words_checked": 3762
+    },
+    {
+      "N": 33,
+      "L": 28,
+      "P": 57,
+      "mode": "all_ff",
+      "words_checked": 3762
+    },
+    {
+      "N": 33,
+      "L": 28,
+      "P": 57,
+      "mode": "random_full_u32",
+      "words_checked": 3762
+    }
+  ]
+}

@@ -1,12 +1,27 @@
-# Native unsigned-MMA setup check
+# Exact wide polynomial implementation
 
-This fixture executes `mma.sync.aligned.m16n8k32.row.col.s32.u8.u8.s32` on a single full warp. It checks all 128 integer outputs against an independent host matrix product. A packs four registers in NVIDIA PTX order; B is column-major so each register loads four contiguous bytes. Operand fixtures include unsigned bytes above 127 and signed C accumulators.
+Complete coefficient-to-coefficient negacyclic multiplication at both FHERMA challenge points:
 
-The check runs once during `fherma_init`, on fixed synthetic matrices. The timed `fherma_run` uses the unchanged cuPQC schoolbook arithmetic to give the official harness a complete, independently verifiable polynomial answer. Current scope is native MMA fragment execution plus the baseline polynomial interface. Fused CRT, RNS NTT and the primary challenge workload follow in the complete implementation.
+| N | W | L | RNS primes | CRT byte stride |
+|---:|---:|---:|---:|---:|
+| 65,536 | 1,747 | 55 | 114 | 480 |
+| 32,768 | 868 | 28 | 57 | 256 |
 
-## Build and test
+`solve.cu` prepares prime/root/Montgomery/CRT constants from the fixed point during setup. Every measured call copies the two complete coefficient inputs, encodes all limbs to RNS, performs cuPQC staged NTT multiplication, untwists and weights residues directly into coefficient-major ByteCRT storage, runs exact unsigned-MMA CRT with centered correction, and returns all canonical coefficient limbs. Input/output transfers and output construction remain inside the call.
 
-Inside FHERMA's `cupqc` image, with the target GPU visible:
+## Arithmetic
+
+- `rns-plan.hpp`: C++17 standard-library-only fixed setup; prime product exceeds `4*N*(q-1)^2`. Both point moduli use the specified `q=2^W-gap` form with `0<gap<2^32`.
+- `rns-encode.cuh`: 16 coefficients × 8 primes per CTA; full-u32 input limbs, Montgomery power dot products, canonical residues.
+- `ntt-pipeline.cuh`: cuPQC 0.6 `uint32`, M256/Block128 runtime-prime NTT. The middle pass fuses two forward second stages, pointwise multiplication and the first inverse stage.
+- `ntt-weighted.cuh`: final inverse with ordinary `N^-1`, followed by one Montgomery product with the ordinary `psi^-i * inv(P/p)` factor. It writes weighted canonical residues directly into G1 rows.
+- `g1-crt.cuh`: MT16/seven warps, original unsigned `m16n8k32` layout, FP64 centered alpha, seven-byte-sum carry, split high×gap reduction and coalesced canonical output.
+
+The first warm-up prints per-kernel CUDA event times and host transfer/allocation times. Scored calls use the same arithmetic without phase events.
+
+## Build
+
+Inside the FHERMA `cupqc` image, with the target GPU visible:
 
 ```sh
 cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -14,24 +29,20 @@ cmake --build build
 ./build/solution /path/to/official/cases
 ```
 
-Use N1024/W128 for the first bring-up run. A successful setup prints `ByteCRT unsigned MMA: 128 integer cells PASS (fixed setup fixture)` to stderr. The harness then judges the full polynomial answer, with setup time kept separate.
+CMake links the external cuPQC 0.6 NTT static library with device LTO and native architecture. SDK files stay external.
+
+## Exact gates
+
+- [C1](native-c1-result.json): actual Blackwell unsigned MMA, all 128 integer cells.
+- [C2](native-c2-result.json): full-width G1, 36 signed coefficients + 60 zero rows / 3,984 words, including cross-64-bit fold products.
+- [C3](native-c3-result.json): actual sm120 cuPQC staged NTT, both full sizes × two real primes / 196,608 canonical residues, checked against an independent ordinary CPU radix-2 oracle. N16 schoolbook validates that oracle.
+- [Fixed plan CPU](rns-plan-cpu-result.json): all prime/root/inverse/power words, FP64 reciprocals and B bytes agree with the independent Python model and original G1 fixtures at both widths/gap boundaries.
+- [Encoding CPU](rns-encode-cpu-result.json): source-extracted arithmetic/kernel agrees with independent Python BigInt modulo, including full-width words and coefficient/prime tails.
+
+C1–C3 diagnostic commits used the attributed upstream schoolbook for their small timed polynomial answer. The current full pipeline has its own two-point native exact/whole-call gate.
+
+`ntt-smoke.cu` supports standalone native oracle execution with `BYTECRT_NTT_SMOKE_STANDALONE`; `g1-smoke.cu`/`mma-smoke.cu` preserve earlier setup checks. These gates stay out of the current complete-call implementation.
 
 ## Source credit
 
-`solve.cu` schoolbook arithmetic, `CMakeLists.txt`, and the generated `fherma.h`/`main.cpp` originate from [fherma-ai/polynomial-mult-cupqc-example](https://github.com/fherma-ai/polynomial-mult-cupqc-example/tree/e157fecf6066dac35c883a0c2e29e6d47d23e4bd), fixed commit e157fecf6066dac35c883a0c2e29e6d47d23e4bd. The official FHERMA baseline declares Apache-2.0. This version adds `mma-smoke.cu`, a single setup call, and its build entry; upstream arithmetic is retained with attribution. The platform rewrites the generated harness at measurement. ByteCRT's new code is Apache-2.0 under the repository licence.
-
-## Actual target result
-
-CUDA 12.8.61 / GCC 13.3 on RTX PRO 6000 Blackwell Server: native unsigned-MMA fixed setup checked all 128 cells and passed; the official N1024/W128 polynomial answer passed 1/1 measured cases after two warm-ups. [Result](native-c1-result.json). The timed polynomial arithmetic remains the attributed schoolbook baseline.
-
-## Full-width G1 fixture data
-
-`python3 make_g1_fixtures.py` reproduces the six files in `fixtures/`. Both official geometries have three synthetic full-width moduli and six signed coefficient cases each, padded to 16 rows. The third gap is 2^32−1 and forces `(wide >> W) * gap` across 64 bits, exercising split multiplication. A contains weighted residues with alpha initially zero; native G1 computes centered alpha. B is column-major; the golden canonical limbs come independently from signed `x % q`. Native G1 execution is the next check.
-
-The integrated G1 check is `g1-smoke.cu`, using `g1-crt.cuh`: MT16, seven full warps, unsigned MMA, FP64 centered alpha, limb carry and near-power reduction with split high×gap. Source-extracted CPU reducer and fixture checks pass all 3,984 words; native compilation and all six fixtures pass on the target (CUDA12.8.61/GCC13.3). The G1 setup prints one PASS per fixture and a 36-coefficient summary. This fixed setup check has its own scope; the timed polynomial answer is still the upstream schoolbook.
-
-[Actual G1 target result](native-c2-result.json): 3,984 words PASS, with both full widths and cross-64-bit high-product cases.
-
-## Staged NTT native gate
-
-`ntt-pipeline.cuh` binds cuPQC 0.6 runtime-prime uint32 staged NTT (M256, 128 threads), with a shared-memory middle pass that fuses two forward second stages, pointwise multiplication and the first inverse stage. `ntt-smoke.cu` checks N65536 and N32768 at two real 31-bit RNS primes against an independent ordinary radix-2 CPU negacyclic product. All 196,608 residues are compared; an N16 schoolbook check validates the CPU oracle. This new sm120 compile/exact gate is pending the actual target run. Wide coefficient encoding, weighted-residue packing and complete two-point latency follow in the full implementation.
+The generated `fherma.h`/`main.cpp` and the original CMake device-LTO pattern originate from [fherma-ai/polynomial-mult-cupqc-example](https://github.com/fherma-ai/polynomial-mult-cupqc-example/tree/e157fecf6066dac35c883a0c2e29e6d47d23e4bd), fixed commit e157fecf6066dac35c883a0c2e29e6d47d23e4bd. The official example declares Apache-2.0. ByteCRT arithmetic and integration are Apache-2.0 under the repository licence. The platform rewrites the generated harness at measurement.

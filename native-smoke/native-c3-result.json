@@ -1,0 +1,42 @@
+{
+  "status": "PASS",
+  "source_commit": "335198523dcb1176992b4b7d75f824fb8df746b2",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "native_cuda": "12.8.61",
+  "ntt_check": {
+    "sizes": [
+      65536,
+      32768
+    ],
+    "primes": [
+      2147352577,
+      2146959361
+    ],
+    "canonical_residues_compared": 196608,
+    "status": "PASS",
+    "timing_boundary": "fixed setup"
+  },
+  "official_polynomial_interface": {
+    "N": 1024,
+    "W": 128,
+    "passed": 1,
+    "cases": 1,
+    "warmups": 2,
+    "verify": true,
+    "implementation": "attributed upstream cuPQC schoolbook",
+    "median_s": 0.000987435
+  },
+  "full_bytecrt_polynomial": "pending integration",
+  "finished_at": "2026-11-11T09:34:19.497Z"
+}

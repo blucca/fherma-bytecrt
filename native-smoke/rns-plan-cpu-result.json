@@ -1,0 +1,63 @@
+{
+  "status": "PASS",
+  "cases": [
+    {
+      "n": 65536,
+      "w": 1747,
+      "gap": 1,
+      "product_bits": 3528,
+      "primes": 114,
+      "kpad": 480,
+      "u32_table_words": 6954,
+      "reciprocal_bytes": 912,
+      "b_bytes": 184800,
+      "prime_order": "exact reference.py sequence",
+      "root_checks": "psi^N=-1; omega^N=1; omega^(N/2)=-1",
+      "comparison": "all table words and all B/FP64 bytes"
+    },
+    {
+      "n": 65536,
+      "w": 1747,
+      "gap": 4294967295,
+      "product_bits": 3528,
+      "primes": 114,
+      "kpad": 480,
+      "u32_table_words": 6954,
+      "reciprocal_bytes": 912,
+      "b_bytes": 184800,
+      "prime_order": "exact reference.py sequence",
+      "root_checks": "psi^N=-1; omega^N=1; omega^(N/2)=-1",
+      "comparison": "all table words and all B/FP64 bytes"
+    },
+    {
+      "n": 32768,
+      "w": 868,
+      "gap": 1,
+      "product_bits": 1767,
+      "primes": 57,
+      "kpad": 256,
+      "u32_table_words": 1938,
+      "reciprocal_bytes": 456,
+      "b_bytes": 50176,
+      "prime_order": "exact reference.py sequence",
+      "root_checks": "psi^N=-1; omega^N=1; omega^(N/2)=-1",
+      "comparison": "all table words and all B/FP64 bytes"
+    },
+    {
+      "n": 32768,
+      "w": 868,
+      "gap": 4294967295,
+      "product_bits": 1767,
+      "primes": 57,
+      "kpad": 256,
+      "u32_table_words": 1938,
+      "reciprocal_bytes": 456,
+      "b_bytes": 50176,
+      "prime_order": "exact reference.py sequence",
+      "root_checks": "psi^N=-1; omega^N=1; omega^(N/2)=-1",
+      "comparison": "all table words and all B/FP64 bytes"
+    }
+  ],
+  "cuda_compiled": false,
+  "GPU_executions": 0
+}

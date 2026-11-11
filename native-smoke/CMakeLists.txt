@@ -1,6 +1,6 @@
 # Builds the cuPQC answer inside the challenge image (fherma/cupqc), which
 # provides CUDA 12.8 and the cuPQC SDK. Unlike the default generated C++
-# CMakeLists, this one enables the CUDA language and links cuPQC BigInt.
+# CMakeLists, this one enables CUDA and links the cuPQC staged NTT arithmetic.
 cmake_minimum_required(VERSION 3.24)
 project(fherma_solution LANGUAGES CXX CUDA)
 
@@ -32,14 +32,14 @@ else()
   set(CUPQC_SDK_DIR /usr/local/cupqc-sdk)
 endif()
 
-add_executable(solution main.cpp solve.cu mma-smoke.cu g1-smoke.cu ntt-smoke.cu)
+add_executable(solution main.cpp solve.cu)
 
 target_include_directories(solution PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
   ${CUPQC_SDK_DIR}/include
   ${CUPQC_SDK_DIR}/include/cupqc)
 
-# The cuPQC BigInt implementation ships as device-LTO objects, so the device
+# The cuPQC NTT implementation ships as device-LTO objects, so the device
 # code is compiled and device-linked with -dlto, and the static library is put
 # on the device link line. -arch=<sm> replaces CMAKE_CUDA_ARCHITECTURES, whose
 # -gencode form conflicts with -dlto.
@@ -52,5 +52,4 @@ target_link_options(solution PRIVATE
   $<DEVICE_LINK:-arch=${FHERMA_CUDA_ARCH};-dlto>)
 
 target_link_libraries(solution PRIVATE
-  ${CUPQC_SDK_DIR}/lib/libcupqc-bigint.a
   ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a)

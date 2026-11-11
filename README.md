@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** the independent CPU model passes at both FHERMA polynomial-multiplication geometries, using three synthetic full-width moduli and 18 coefficient fixtures per geometry. The native unsigned-MMA fragment check also passes on the target Blackwell GPU. Complete ByteCRT convolutions and competitive whole-call timing are the next milestones.
+**Current result:** actual RTX PRO 6000 Blackwell native unsigned MMA, full-width fused G1 CRT and both cuPQC staged NTT sizes pass their independent exact gates. The complete wide-coefficient RNS/NTT/weighted-CRT implementation is now in [`native-smoke/`](native-smoke/), ready for the first full two-point target measurement.
 
 ```sh
 python3 -B reference.py
@@ -53,7 +53,7 @@ The prime product preserves two centered-CRT guard bits. Relative to a conservat
 
 ## Native work
 
-The next artifact is one fused MMA/CRT kernel with a coalesced output handoff, integrated with an exact RNS NTT under the [FHERMA challenge's](https://www.fherma.io/kernels/polynomial-multiplication/challenges/polynomial-multiplication-2025) complete timing boundary. Its competitive family already includes RNS NTT and tensor-core CRT; improvement must be measured on the target runner.
+The complete implementation combines one fused MMA/CRT kernel with a coalesced output handoff and an exact RNS NTT under the [FHERMA challenge's](https://www.fherma.io/kernels/polynomial-multiplication/challenges/polynomial-multiplication-2025) complete timing boundary. Its competitive family already includes RNS NTT and tensor-core CRT; improvement must be measured on the target runner.
 
 The benchmark reference is the [official cuPQC example](https://github.com/fherma-ai/polynomial-mult-cupqc-example), with the generated host interface. Original reference code: Apache-2.0.
 
@@ -67,9 +67,9 @@ For `g=lane/4`, `k=4*(lane%4)`, the four A registers start at `(g,k)`, `(g+8,k)`
 python3 -B fragment_check.py
 ```
 
-The CPU check covers every A/B/C cell exactly once (512/256/128), independently inverts the register coordinates, reconstructs byte-packed operands and checks all 128 integer `A·B+C` outputs against a direct matrix oracle. Fixtures include bytes above 127. [`fragment-result.json`](fragment-result.json) records the result; native GPU execution follows as a separate step.
+The CPU check covers every A/B/C cell exactly once (512/256/128), independently inverts the register coordinates, reconstructs byte-packed operands and checks all 128 integer `A·B+C` outputs against a direct matrix oracle. Fixtures include bytes above 127. [`fragment-result.json`](fragment-result.json) records the result; native GPU execution passes all 128 cells in the C1 result below.
 
-[`native-smoke/`](native-smoke/) is the runnable next step: one full warp executes the unsigned MMA on fixed matrices during setup, and a host oracle checks all 128 cells. An attributed upstream cuPQC schoolbook implementation supplies the complete polynomial answer to the official harness. On the target RTX PRO 6000 Blackwell Server GPU (CUDA 12.8.61 / GCC 13.3), all 128 native integer cells passed; the official N1024/W128 upstream polynomial answer passed 1/1 measured cases after two warm-ups. [`native-c1-result.json`](native-smoke/native-c1-result.json) records this stage. The full competitive pipeline follows separately.
+The C1 diagnostic commit executed one full warp on fixed matrices during setup, with a host oracle checking all 128 cells. The attributed upstream cuPQC schoolbook supplied the small-polynomial interface answer for that gate. On the target RTX PRO 6000 Blackwell Server GPU (CUDA 12.8.61 / GCC 13.3), all 128 native integer cells passed; the official N1024/W128 upstream polynomial answer passed 1/1 measured cases after two warm-ups. [`native-c1-result.json`](native-smoke/native-c1-result.json) records this stage. The current full pipeline replaces schoolbook with RNS encoding, staged NTT and fused ByteCRT.
 
 ## Host output construction probe
 
@@ -89,8 +89,8 @@ A concrete native experiment is fixed pinned D2H staging plus range construction
 
 G1 passes all six fixed setup fixtures on the RTX PRO 6000 Blackwell Server GPU: 36 signed full-width coefficients plus 60 zero rows, 3,984 canonical output words checked. Both FHERMA widths are covered, with FP64 centered alpha, unsigned MMA, limb carry and near-power reduction; UINT32_MAX gap exercises products beyond 64 bits. [Native G1 result](native-smoke/native-c2-result.json).
 
-The complete polynomial pipeline now proceeds to cuPQC staged RNS NTT, coefficient encoding and whole-call measurement. The current timed polynomial answer is the attributed upstream schoolbook at the small bring-up point.
+The complete polynomial pipeline now uses cuPQC staged RNS NTT, tiled wide-coefficient encoding and fused inverse/CRT-weighted packing. Its first whole-call native measurement is next.
 
 ### Runtime-prime staged NTT gate
 
-[Native NTT integration](native-smoke/ntt-pipeline.cuh) uses cuPQC 0.6 M256/Block128 at both challenge sizes. A fused middle stage keeps both forward spectral tiles and the product in shared memory through the first inverse stage. [The fixed setup oracle](native-smoke/ntt-smoke.cu) compares all 196,608 residues at two real RNS primes against an independent CPU radix-2 product, whose small-size result is checked against schoolbook. Actual sm120 compilation/execution is the next gate; the prior G1 native result remains coefficient-level. The SDK remains an external dependency.
+[Native NTT integration](native-smoke/ntt-pipeline.cuh) uses cuPQC 0.6 M256/Block128 at both challenge sizes. A fused middle stage keeps both forward spectral tiles and the product in shared memory through the first inverse stage. [The fixed setup oracle](native-smoke/ntt-smoke.cu) compares all 196,608 residues at two real RNS primes against an independent CPU radix-2 product, whose small-size result is checked against schoolbook. Actual sm120 compilation/execution passes all 196,608 residues on the target. [C3 native result](native-smoke/native-c3-result.json). The G1 gate remains coefficient-level, and C3 covers RNS negacyclic convolution before complete wide-coefficient handoff. The SDK remains an external dependency.
