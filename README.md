@@ -69,6 +69,8 @@ python3 -B fragment_check.py
 
 The CPU check covers every A/B/C cell exactly once (512/256/128), independently inverts the register coordinates, reconstructs byte-packed operands and checks all 128 integer `A·B+C` outputs against a direct matrix oracle. Fixtures include bytes above 127. [`fragment-result.json`](fragment-result.json) records the result; native GPU execution follows as a separate step.
 
+[`native-smoke/`](native-smoke/) is the runnable next step: one full warp executes the unsigned MMA on fixed matrices during setup, and a host oracle checks all 128 cells. An attributed upstream cuPQC schoolbook implementation supplies the complete polynomial answer to the official harness. Target compilation and this new native check are pending; the CPU model and the full competitive pipeline have separate evidence scopes.
+
 ## Host output construction probe
 
 The generated official interface returns `std::vector<uint32_t>`, and only `fherma_run` is timed. A CPU-only probe compares `resize` followed by an opaque overwrite with direct range construction from an already available staging buffer. Both produce identical complete output vectors.
