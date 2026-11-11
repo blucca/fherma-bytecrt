@@ -1,0 +1,178 @@
+{
+    "status": "PASS",
+    "CPU_only": true,
+    "GPU_executions": 0,
+    "actual_workers": 4,
+    "full_main_vector": {
+        "n": 65536,
+        "l": 55,
+        "words": 3604480,
+        "bytes": 14417920,
+        "fresh_return_counts": {
+            "memcpy": 1,
+            "memmove": 0,
+            "parallel": 1,
+            "libc_fallback": 0
+        },
+        "existing_capacity_assign_counts": {
+            "memcpy": 0,
+            "memmove": 1,
+            "parallel": 1,
+            "libc_fallback": 0
+        },
+        "all_words_equal": true,
+        "source_complete": true,
+        "source_guards": true,
+        "vector_owner_release": true,
+        "source_owner_release": true,
+        "worker_real_memcpy_bypass": true
+    },
+    "disjoint_byte_cases": [
+        {
+            "operation": "memcpy",
+            "bytes": 0,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 0,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 1,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 1,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 7,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 7,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 63,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 63,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 4097,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 4097,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 8388607,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 8388607,
+            "parallel": false,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 8388608,
+            "parallel": true,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 8388608,
+            "parallel": true,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memcpy",
+            "bytes": 8388621,
+            "parallel": true,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        },
+        {
+            "operation": "memmove",
+            "bytes": 8388621,
+            "parallel": true,
+            "golden_memcmp": true,
+            "source_complete": true,
+            "guards": true
+        }
+    ],
+    "large_overlap_cases": [
+        {
+            "direction": "destination_above_source",
+            "bytes": 8388621,
+            "shift": 37,
+            "libc_fallback": true,
+            "golden_memcmp": true,
+            "guards": true
+        },
+        {
+            "direction": "destination_below_source",
+            "bytes": 8388621,
+            "shift": 37,
+            "libc_fallback": true,
+            "golden_memcmp": true,
+            "guards": true
+        }
+    ]
+}

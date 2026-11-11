@@ -34,7 +34,7 @@ endif()
 
 find_package(OpenMP REQUIRED COMPONENTS CXX)
 
-add_executable(solution main.cpp solve.cu io-copy.cpp)
+add_executable(solution main.cpp solve.cu io-copy.cpp vector-copy.cpp)
 
 target_include_directories(solution PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -51,7 +51,9 @@ set_target_properties(solution PROPERTIES
 target_compile_options(solution PRIVATE
   $<$<COMPILE_LANGUAGE:CUDA>:-arch=${FHERMA_CUDA_ARCH};-dlto>)
 target_link_options(solution PRIVATE
-  $<DEVICE_LINK:-arch=${FHERMA_CUDA_ARCH};-dlto>)
+  $<DEVICE_LINK:-arch=${FHERMA_CUDA_ARCH};-dlto>
+  "$<HOST_LINK:LINKER:--wrap=memcpy>"
+  "$<HOST_LINK:LINKER:--wrap=memmove>")
 
 target_link_libraries(solution PRIVATE
   ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a
