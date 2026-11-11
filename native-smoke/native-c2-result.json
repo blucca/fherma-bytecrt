@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "source_commit": "fd1dd66b96acd88d8fcb3518f8bd9a546d955f24",
+  "GPU": "NVIDIA RTX PRO 6000 Blackwell Server Edition · 97887 MiB",
+  "compiler": "GCC13.3 / NVIDIA CUDA12.8.61",
+  "G1": {
+    "fixture_files": 6,
+    "signed_fullwidth_coefficients": 36,
+    "zero_padded_rows": 60,
+    "canonical_output_words_checked": 3984,
+    "geometries": [
+      {
+        "N": 65536,
+        "W": 1747,
+        "L": 55,
+        "primes": 114,
+        "Kpad": 480
+      },
+      {
+        "N": 32768,
+        "W": 868,
+        "L": 28,
+        "primes": 57,
+        "Kpad": 256
+      }
+    ],
+    "gaps": "1, 2N-1, UINT32_MAX; last exercises high*gap beyond 64 bits",
+    "checks": "FP64 centered alpha, unsigned MMA, limb carry, split high product, canonical reduction and coalesced output"
+  },
+  "baseline_polynomial": {
+    "N": 1024,
+    "W": 128,
+    "measured_cases": 1,
+    "passed": 1,
+    "warmups": 2
+  },
+  "scope": "Fixed coefficient-level G1 setup fixtures; complete ByteCRT convolution and whole-call performance follow NTT/encoding integration",
+  "finished_at": "2026-11-11T09:09:07.268Z"
+}

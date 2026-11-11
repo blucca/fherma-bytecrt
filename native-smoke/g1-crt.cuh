@@ -68,7 +68,7 @@ __device__ __forceinline__ void reduce_near_power(uint32_t* digits,
 
 }  // namespace detail
 
-// A: row-major M*Kpad bytes; each row starts with P canonical u32 terms,
+// A: row-major M*Kpad bytes; each row starts with P weighted canonical u32 terms t_j = c_j * inv(P_j) mod p_j,
 // followed by the overwritten alpha u32 and zero padding. B: 7L column-major
 // byte columns, each Kpad bytes. M is a multiple of 16; grid.x=M/16.
 // Fixed invp[j]=1/p_j and q are setup data. All input-dependent work stays here.

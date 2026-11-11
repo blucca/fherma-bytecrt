@@ -84,3 +84,9 @@ g++ -std=c++17 -O3 -fno-lto host-output-check.cpp -o temp/host-check
 GCC 16.2.1, Linux x86_64: 20 interleaved samples per method after 3 warm-ups. Local medians were 1.468 ms / 0.864 ms for N65536/L55 and 0.160 ms / 0.096 ms for N32768/L28. The overwrite is CPU memcpy; these measurements cover vector construction. GPU DMA, pinned staging and official whole-call measurements have their own target-run validation.
 
 A concrete native experiment is fixed pinned D2H staging plus range construction, with the entire DMA/copy/construction inside the timer. Its acceptance is unchanged exact output and measured complete-call improvement.
+
+## Native full-width fused CRT
+
+G1 passes all six fixed setup fixtures on the RTX PRO 6000 Blackwell Server GPU: 36 signed full-width coefficients plus 60 zero rows, 3,984 canonical output words checked. Both FHERMA widths are covered, with FP64 centered alpha, unsigned MMA, limb carry and near-power reduction; UINT32_MAX gap exercises products beyond 64 bits. [Native G1 result](native-smoke/native-c2-result.json).
+
+The complete polynomial pipeline now proceeds to cuPQC staged RNS NTT, coefficient encoding and whole-call measurement. The current timed polynomial answer is the attributed upstream schoolbook at the small bring-up point.
