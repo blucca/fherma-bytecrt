@@ -1,0 +1,88 @@
+{
+  "status": "PASS",
+  "source_commit": "d106d2f638ca1a3e27a5d3287d6b840bc2ce4ef0",
+  "target": {
+    "arch": "x86_64",
+    "cores": 24,
+    "memory_gb": 214,
+    "memory_cap_gb": 200,
+    "gpu": "NVIDIA RTX PRO 6000 Blackwell Server Edition \u00b7 97887 MiB",
+    "gpu_memory_gb": 95.6,
+    "cpu": "Intel(R) Xeon(R) 6776P",
+    "kernel": "6.11.0-1016-nvidia",
+    "os": "linux"
+  },
+  "SDK": "NVIDIA cuPQC 0.6.0",
+  "points": [
+    {
+      "point": "N65536-W1747",
+      "passed": 1,
+      "seeds": 1,
+      "whole_call_seconds": {
+        "min": 0.004963255,
+        "median": 0.004963255,
+        "mean": 0.004963255,
+        "max": 0.004963255
+      },
+      "measured_seed": [
+        14
+      ]
+    },
+    {
+      "point": "N32768-W868",
+      "passed": 1,
+      "seeds": 1,
+      "whole_call_seconds": {
+        "min": 0.001249034,
+        "median": 0.001249034,
+        "mean": 0.001249034,
+        "max": 0.001249034
+      },
+      "measured_seed": [
+        26
+      ]
+    }
+  ],
+  "phase_profile": [
+    {
+      "N": 65536,
+      "W": 1747,
+      "GPU_first_warmup_us": {
+        "encode": 439.36,
+        "forward1": 375.808,
+        "fused-middle": 100.032,
+        "inverse-weighted": 198.752,
+        "G1": 297.216
+      },
+      "host_first_warmup_us": {
+        "H2D": 2746.11,
+        "product": 1430.13,
+        "D2H": 265.246,
+        "output-construct": 3144.767
+      }
+    },
+    {
+      "N": 32768,
+      "W": 868,
+      "GPU_first_warmup_us": {
+        "encode": 89.568,
+        "forward1": 101.376,
+        "fused-middle": 28.576,
+        "inverse-weighted": 53.312,
+        "G1": 102.432
+      },
+      "host_first_warmup_us": {
+        "H2D": 888.406,
+        "product": 388.123,
+        "D2H": 75.606,
+        "output-construct": 671.613
+      }
+    }
+  ],
+  "verify": true,
+  "debug": false,
+  "warmups_per_point": 2,
+  "finished_at": "2026-11-11T10:01:45.057Z",
+  "measurement_scope": "two-point native diagnostic, one measured fresh seed each",
+  "changes": "Montgomery forward twist; fixed pinned D2H staging and range output construction"
+}

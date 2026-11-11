@@ -4,6 +4,7 @@
 #include "fherma.h"
 #include "rns-plan.hpp"
 #include "rns-encode.cuh"
+#include "rns-encode-mma.cuh"
 #include "ntt-weighted.cuh"
 #include "g1-crt.cuh"
 
@@ -14,6 +15,8 @@
 #include <stdexcept>
 #include <string>
 #include <vector>
+
+void bytecrt_pack_inputs(uint32_t*, const uint32_t*, const uint32_t*, std::size_t);
 
 namespace {
 
@@ -37,6 +40,9 @@ struct State {
     uint32_t* weighted = nullptr;
     uint32_t* out = nullptr;
     uint32_t* hostout = nullptr;
+    uint32_t* hostinput = nullptr;
+    uint8_t* encode_b = nullptr;
+    uint64_t* encode_mu = nullptr;
     uint32_t* q = nullptr;
     uint32_t* primes = nullptr;
     uint32_t* neg_inverses = nullptr;
@@ -47,11 +53,14 @@ struct State {
     Constant* constants = nullptr;
     std::vector<void*> allocations;
     std::array<cudaEvent_t, 6> events{};
+    std::array<cudaEvent_t, 2> transfer_events{};
     unsigned calls = 0;
     ~State() {
         for (auto e : events) if (e) cudaEventDestroy(e);
+        for (auto e : transfer_events) if (e) cudaEventDestroy(e);
         for (void* p : allocations) cudaFree(p);
         if (hostout) cudaFreeHost(hostout);
+        if (hostinput) cudaFreeHost(hostinput);
     }
 };
 
@@ -99,7 +108,8 @@ void product(State& s, bool profile) {
     constexpr size_t middle = 2 * cupqc::fwd_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     constexpr size_t last = cupqc::inv_stage_2_ntt_shared_workspace_size<N, kSubSize, uint32_t>();
     mark(s, profile, 0);
-    bytecrt::launch_encode(N, s.plan.l, P, s.inputs, s.primes, s.neg_inverses, s.powers_mont, s.ab);
+    bytecrt::launch_encode_mma(N, s.plan.l, P, s.inputs, s.encode_b, s.primes,
+                                s.neg_inverses, s.powers_mont, s.encode_mu, s.ab);
     check(cudaGetLastError(), "coefficient RNS encoding");
     mark(s, profile, 1);
     forward_first<N><<<dim3(kSubSize, 2 * P), kThreads, first>>>(s.ab, s.tw, s.psi, s.constants, P);
@@ -135,6 +145,11 @@ void* fherma_init(const fherma::Point& p) {
     check(cudaMemset(s->weighted, 0, size_t(p.N) * s->plan.kpad), "zero fixed CRT padding");
     allocate(*s, s->out, coeffs);
     check(cudaMallocHost(&s->hostout, coeffs * sizeof(uint32_t)), "allocate pinned output");
+    check(cudaMallocHost(&s->hostinput, 2 * coeffs * sizeof(uint32_t)), "allocate pinned input");
+    fixed_copy(*s, s->encode_b, bytecrt::make_encode_b(p.L, s->plan.pcount, s->plan.primes, s->plan.powers_mont));
+    std::vector<uint64_t> encode_mu(s->plan.pcount);
+    for (unsigned j = 0; j < s->plan.pcount; ++j) encode_mu[j] = UINT64_MAX / s->plan.primes[j];
+    fixed_copy(*s, s->encode_mu, encode_mu);
     fixed_copy(*s, s->q, p.q.data);
     fixed_copy(*s, s->primes, s->plan.primes);
     fixed_copy(*s, s->powers_mont, s->plan.powers_mont);
@@ -168,6 +183,7 @@ void* fherma_init(const fherma::Point& p) {
     if (p.N == 65536) initialize_tables<65536>(*s);
     else initialize_tables<32768>(*s);
     for (auto& e : s->events) check(cudaEventCreate(&e), "profile event setup");
+    for (auto& e : s->transfer_events) check(cudaEventCreate(&e), "transfer event setup");
     cudaDeviceProp props{};
     check(cudaGetDeviceProperties(&props, 0), "device properties");
     std::fprintf(stderr, "ByteCRT full setup N=%u W=%u L=%u P=%u gap=%u: %s, SMs=%d\n",
@@ -181,12 +197,15 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
     const size_t bytes = coeffs * sizeof(uint32_t);
     if (in.a.data.size() != coeffs || in.b.data.size() != coeffs)
         throw std::runtime_error("ByteCRT input coefficient count");
-    // First call is an official warm-up, so phase events leave scored calls clean.
-    const bool profile = s.calls++ == 0;
+    // Both official warm-ups report phases; scored calls stay event-free.
+    const unsigned call = s.calls++;
+    const bool profile = call < 2;
     const auto t0 = Clock::now();
-    check(cudaMemcpy(s.inputs, in.a.data.data(), bytes, cudaMemcpyHostToDevice), "copy a");
-    check(cudaMemcpy(s.inputs + coeffs, in.b.data.data(), bytes, cudaMemcpyHostToDevice), "copy b");
-    const auto t1 = Clock::now();
+    bytecrt_pack_inputs(s.hostinput, in.a.data.data(), in.b.data.data(), coeffs);
+    const auto packed = Clock::now();
+    if (profile) check(cudaEventRecord(s.transfer_events[0]), "H2D start event");
+    check(cudaMemcpyAsync(s.inputs, s.hostinput, 2 * bytes, cudaMemcpyHostToDevice), "copy packed inputs");
+    if (profile) check(cudaEventRecord(s.transfer_events[1]), "H2D end event");
     if (s.plan.n == 65536) product<65536, 114, 480>(s, profile);
     else product<32768, 57, 256>(s, profile);
     check(cudaDeviceSynchronize(), "full product execute");
@@ -202,11 +221,14 @@ fherma::Outputs fherma_run(void* state, const fherma::Inputs& in) {
         for (unsigned i = 0; i < 5; ++i) {
             float ms = 0;
             check(cudaEventElapsedTime(&ms, s.events[i], s.events[i + 1]), "profile elapsed");
-            std::fprintf(stderr, "ByteCRT GPU %s: %.3f us (first warm-up)\n", names[i], double(ms) * 1000);
+            std::fprintf(stderr, "ByteCRT GPU %s: %.3f us (warm-up %u)\n", names[i], double(ms) * 1000, call + 1);
         }
+        float transfer_ms = 0;
+        check(cudaEventElapsedTime(&transfer_ms, s.transfer_events[0], s.transfer_events[1]), "H2D elapsed");
+        std::fprintf(stderr, "ByteCRT GPU H2D: %.3f us (warm-up %u)\n", double(transfer_ms) * 1000, call + 1);
         const auto us = [](auto a, auto b) { return std::chrono::duration<double, std::micro>(b-a).count(); };
-        std::fprintf(stderr, "ByteCRT host H2D=%.3f product=%.3f D2H=%.3f output-construct=%.3f us (first warm-up)\n",
-                     us(t0,t1), us(t1,t2), us(t2,t3), us(t3,t4));
+        std::fprintf(stderr, "ByteCRT host input-pack=%.3f H2D+product=%.3f D2H=%.3f output-construct=%.3f us (warm-up %u)\n",
+                     us(t0,packed), us(packed,t2), us(t2,t3), us(t3,t4), call + 1);
     }
     return out;
 }

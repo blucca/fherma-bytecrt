@@ -32,7 +32,9 @@ else()
   set(CUPQC_SDK_DIR /usr/local/cupqc-sdk)
 endif()
 
-add_executable(solution main.cpp solve.cu)
+find_package(OpenMP REQUIRED COMPONENTS CXX)
+
+add_executable(solution main.cpp solve.cu io-copy.cpp)
 
 target_include_directories(solution PRIVATE
   ${CMAKE_CURRENT_SOURCE_DIR}
@@ -52,4 +54,5 @@ target_link_options(solution PRIVATE
   $<DEVICE_LINK:-arch=${FHERMA_CUDA_ARCH};-dlto>)
 
 target_link_libraries(solution PRIVATE
-  ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a)
+  ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a
+  OpenMP::OpenMP_CXX)

@@ -2,7 +2,7 @@
 
 An exact unsigned-byte matrix model for a fused, multi-limb GPU CRT epilogue.
 
-**Current result:** actual RTX PRO 6000 Blackwell native unsigned MMA, full-width fused G1 CRT and both cuPQC staged NTT sizes pass their independent exact gates. The complete wide-coefficient RNS/NTT/weighted-CRT implementation passes both official-size native outputs in [`native-smoke/`](native-smoke/): an initial one-seed diagnostic measures 6.598 ms / 1.892 ms end-to-end. [Full native result](native-smoke/native-c4-result.json). Host transfers/output construction and the forward boundary are the current measured bottlenecks.
+**Current result:** actual RTX PRO 6000 Blackwell native unsigned MMA, full-width fused G1 CRT and both cuPQC staged NTT sizes pass their independent exact gates. The complete wide-coefficient RNS/NTT/weighted-CRT implementation passes both official-size native outputs in [`native-smoke/`](native-smoke/): an initial one-seed diagnostic measures 6.598 ms / 1.892 ms end-to-end. [Full native result](native-smoke/native-c4-result.json). [C5](native-smoke/native-c5-result.json) preserves exact outputs and improves the complete calls to 4.963 ms / 1.249 ms with pinned D2H staging. Host input/output and the forward boundary remain measured bottlenecks.
 
 ```sh
 python3 -B reference.py
@@ -99,4 +99,8 @@ The complete polynomial pipeline now uses cuPQC staged RNS NTT, tiled wide-coeff
 
 The initial [C4 native run](native-smoke/native-c4-result.json) passes both complete polynomial outputs at the actual prime moduli, including all 3,604,480 / 917,504 output words. The single measured seeds cost 6.598 ms / 1.892 ms. The first warm-up separates GPU kernels from host transfers and output allocation; its phase values have that warm-up scope.
 
-The current iteration replaces a runtime division in the forward twist with an exact Montgomery product. It also uses fixed pinned D2H staging and direct output-vector range construction. Complete transfers, construction and arithmetic remain timed. The next native run judges exactness and whole-call effects together.
+The current iteration replaces a runtime division in the forward twist with an exact Montgomery product. It also uses fixed pinned D2H staging and direct output-vector range construction. Complete transfers, construction and arithmetic remain timed. C5 passes both complete outputs; pinned D2H takes 265 µs / 76 µs in the first warm-up, while forward-stage timing stays about 376 µs / 101 µs. The next native method applies exact unsigned-MMA input RNS encoding and fixed pinned input packing with bounded CPU parallel copies.
+
+## Tensor RNS input encoding
+
+[`rns-encode-mma.cuh`](native-smoke/rns-encode-mma.cuh) reuses each 16-coefficient byte tile across all primes. Seven unsigned byte-dot sums reconstruct the full ≤69-bit ordinary power-weighted sum. A fixed 64-bit Barrett reciprocal plus one Montgomery high-word product gives the exact canonical residue. The first native measurement follows; source-extracted CPU checks already match independent whole-coefficient Python modulo, including full-u32 words and tails. Input/output copies remain within the complete-call timer.

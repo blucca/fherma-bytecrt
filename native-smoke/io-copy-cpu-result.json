@@ -1,0 +1,99 @@
+{
+    "status": "PASS",
+    "requested_workers": 4,
+    "actual_workers": 1,
+    "CPU_only": true,
+    "GPU_executions": 0,
+    "small_tail_cases": [
+        {
+            "words_per_operand": 0,
+            "packed_words": 0,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 1,
+            "packed_words": 2,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 2,
+            "packed_words": 4,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 5,
+            "packed_words": 10,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 6,
+            "packed_words": 12,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 7,
+            "packed_words": 14,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 11,
+            "packed_words": 22,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 13,
+            "packed_words": 26,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 31,
+            "packed_words": 62,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        },
+        {
+            "words_per_operand": 65,
+            "packed_words": 130,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true
+        }
+    ],
+    "full_points": [
+        {
+            "words_per_operand": 3604480,
+            "packed_words": 7208960,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true,
+            "median_pack_us": 3201.27,
+            "timed_samples": 3
+        },
+        {
+            "words_per_operand": 917504,
+            "packed_words": 1835008,
+            "all_words_equal": true,
+            "sources_unchanged": true,
+            "guards_unchanged": true,
+            "median_pack_us": 536.872,
+            "timed_samples": 3
+        }
+    ]
+}

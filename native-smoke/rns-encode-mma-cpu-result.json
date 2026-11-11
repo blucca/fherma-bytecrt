@@ -1,0 +1,63 @@
+{
+  "status": "PASS",
+  "scope": "standard-library CPU byte-dot / G1 fragment-layout model / exact Barrett-Montgomery epilogue",
+  "CUDA_compilations": 0,
+  "GPU_executions": 0,
+  "primes": [
+    2013265921,
+    2130706433
+  ],
+  "points": [
+    {
+      "L": 55,
+      "P": 114,
+      "K": 224,
+      "groups": 15,
+      "N": 17,
+      "modes": [
+        "zero",
+        "all_ff",
+        "random_full_u32"
+      ],
+      "operands": 2,
+      "canonical_outputs_checked": 11628,
+      "padded_coefficients_per_operand": 15,
+      "B_bytes": 178752,
+      "shared_bytes": 7232,
+      "dot_bound": 14305500
+    },
+    {
+      "L": 28,
+      "P": 57,
+      "K": 128,
+      "groups": 8,
+      "N": 17,
+      "modes": [
+        "zero",
+        "all_ff",
+        "random_full_u32"
+      ],
+      "operands": 2,
+      "canonical_outputs_checked": 5814,
+      "padded_coefficients_per_operand": 15,
+      "B_bytes": 51072,
+      "shared_bytes": 5696,
+      "dot_bound": 7282800
+    }
+  ],
+  "byte_dot_canonical_outputs": 17442,
+  "MMA_fragment_output_words_checked": 3584,
+  "barrett_low64_cases": 50014,
+  "barrett_low64_subtractions_in_dot": 945,
+  "largest_dot": 6727920,
+  "largest_dot_integer_bits": 68,
+  "largest_high": 12,
+  "candidate_sha256": "2ce3e352583840060538574636f29f2fd9b3ce8e9e624fe655d2e8686036f95c",
+  "production_header_sha256": "efb54d7d47c948734a9c99f28bad4c51a4fd53dba22935799c90fb6e9d3f050d",
+  "std_cpp_status": "PASS",
+  "std_cpp_b_bytes": 229824,
+  "std_cpp_digit_cases": 17442,
+  "std_cpp_barrett_cases": 50014,
+  "source_extracted_mock_cases": 18,
+  "source_extracted_mock_output_words": 34884
+}
