@@ -12,6 +12,7 @@ The new independent [batched artifact](native-batched/) handles **128 products a
 - [One compute workspace, shared Point tables, four private DMA slots](native-batched/gpu-workspace-method.md) — exact B1/B128, 65.566% smaller explicit device arrays, B128 **91.996 ms**: the 5% throughput gate stops this method.
 - [Whole-operand and whole-owned-product service](native-batched/host-bulk-method.md) — exact native output, 0.03937% whole reduction: the 5% gate stops this formula. Selected S1 remains qualified.
 - [Non-temporal host traffic: paired CPU gate and full owned-output check](native-batched/host-copy-cpu.md) — NT passes exact native output; its 0.824% whole-call reduction stops at the 5% gate. The official S1 baseline is pinned separately.
+- [Three queues, one timed return](native-batched/queue-timing-notes.md) — warmup counters, fresh whole-call values and a reproducible payload scale check.
 - [Why large owned outputs need a separate allocation measurement](native-batched/owned-output-cpu.md) · [real generated-harness lifecycle check](native-batched/harness-heap-cpu.md)
 
 
