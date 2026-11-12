@@ -16,15 +16,21 @@
     "stderr_bytes": 92498
   },
   "gpu_native": {
-    "cuda_12_8_build_and_abi": "pending root unique native",
-    "exact": "pending root unique native",
+    "cuda_12_8_build_and_abi": "build/header/API version passed; actual activity information gate failed",
+    "exact": "3/3 fresh native exact",
     "perturbation_median_ms_threshold": 92.33840305,
     "fresh_count": 3,
     "warm_count": 1,
     "formal_count": 0,
     "perturbation_median_ms_min": 86.95946694999999,
     "perturbation_median_ms_max": 92.33840305,
-    "perturbation_formula": "abs(native_scored_median/89.648935 - 1) <= .03"
+    "perturbation_formula": "abs(native_scored_median/89.648935 - 1) <= .03",
+    "perturbation_median_ms": 90.42764,
+    "perturbation_percent": 0.8686160075409788,
+    "whole_symmetric_3percent_gate": "passed",
+    "real_activity_contract": "failed: all four calls valid:false",
+    "native_log_transport": "300 chars per OUT payload in both authorized endpoints",
+    "actual_result": "native-result.json"
   },
   "changes": {
     "solve.cu": {

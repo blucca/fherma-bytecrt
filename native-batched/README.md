@@ -48,4 +48,4 @@ The [single-compute/Point sharing method](gpu-workspace-method.md) passes native
 
 ## Active-service information probe
 
-The [independent B128 CUPTI diagnostic](../diagnostics/b128-active/) keeps ACA arithmetic, four slots and the complete owned return. It separates one warm call from three fresh calls, with activity completeness and a symmetric 3% whole-call perturbation gate. The qualified ACA source remains pinned; this probe adds no challenge entry. Actual target build and trace results are recorded with the diagnostic when available.
+The [independent B128 CUPTI diagnostic](../diagnostics/b128-active/) keeps ACA arithmetic, four slots and the complete owned return. It separates one warm call from three fresh calls, with activity completeness and a symmetric 3% whole-call perturbation gate. The qualified ACA source remains pinned; this probe adds no challenge entry. The actual diagnostic passed 3/3 exact and the 3% whole-call band; its activity-information gate failed (four `valid:false` calls and truncated log payloads). No new optimization follows this probe.

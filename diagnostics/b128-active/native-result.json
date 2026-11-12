@@ -1,0 +1,63 @@
+{
+  "source": "32c96f68c14f1d337afd73d85a2db8dc1ca1fced",
+  "baseline_source": "aca09d65fe30e6c9497f7a0f038e9a9f4b7384df",
+  "point": {
+    "B": 128,
+    "N": 65536,
+    "W": 1747,
+    "L": 55
+  },
+  "native_fresh_seeds": 3,
+  "native_passed": 3,
+  "warmup_cases": 1,
+  "seconds_ms": {
+    "min": 90.29936500000001,
+    "median": 90.42764,
+    "mean": 90.39747066666666,
+    "max": 90.465407
+  },
+  "qualified_ACA_reference_ms": 89.648935,
+  "absolute_whole_perturbation_percent": 0.8686160075409788,
+  "whole_symmetric_3percent_gate": "passed",
+  "CUDA_version": 12080,
+  "CUPTI_header_API": 26,
+  "CUPTI_runtime_API": 26,
+  "actual_build_and_API_version_gate": "passed",
+  "information_gate": "failed",
+  "observed_calls": [
+    {
+      "call": 1,
+      "scored": false,
+      "valid": false
+    },
+    {
+      "call": 2,
+      "scored": true,
+      "valid": false
+    },
+    {
+      "call": 3,
+      "scored": true,
+      "valid": false
+    },
+    {
+      "call": 4,
+      "scored": true,
+      "valid": false
+    }
+  ],
+  "returned_OUT_payload_chars": [
+    300,
+    300,
+    300,
+    300,
+    300
+  ],
+  "full_activity_JSON": "truncated in both submission history and run detail",
+  "kernel_active_or_critical_gap_result": null,
+  "memory_metric_max_mb": 12758.8,
+  "GPU_memory_metric_max_mb": 1927,
+  "original_qualification": "ACA preserved",
+  "new_formal_count": 0,
+  "extra_native_count": 0
+}

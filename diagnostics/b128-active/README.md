@@ -2,6 +2,12 @@
 
 Independent ACA source artifact. Build target `solution` retains the generated harness, nine byte-identical core files (seven mathematics/solve plus two copy files), original GPU state/streams/events/buffers, B1 branch, and caller-owned result operations. The immutable baseline is `aca09d65fe30e6c9497f7a0f038e9a9f4b7384df`; `instrumentation-only.patch` and direct byte comparisons in `check-closure.py` expose the source boundary.
 
+## Actual target result — information gate failed
+
+The [native result](native-result.json) is **3/3 fresh exact**, with one separate warm-up, on the original CUDA 12.8 cuPQC image. Fresh whole min/median/max: **90.299365 / 90.427640 / 90.465407 ms**. The median differs from the qualified ACA reference by **+0.868613%**, inside the symmetric 3% band. Build and CUPTI header/runtime API 26 checks passed.
+
+**Activity information gate: failed.** All four calls printed `valid:false`. Both the authorized submission history and run-detail responses retain the first **300 characters per OUT payload**; the [five actual prefixes](native-log-prefixes.txt) stop before record counts, activity arrays and failure counters. Active-service and critical-gap values are unreported. Further native profiling and optimization experiments are stopped; the original qualified ACA source stays unchanged. This directory preserves the exact probe and its negative information result.
+
 ## Fixed collection contract
 
 - Enable only `CONCURRENT_KERNEL`, `MEMCPY`, `EXTERNAL_CORRELATION` after original B128 initialization. Runtime API tracing is off. Added CUDA timing event count: zero.
@@ -37,4 +43,4 @@ Run `check-closure.py` from a repository checkout containing `../../native-batch
 
 Root owns one native B128 point: 1 warm + 3 fresh, formal count 0. Use that native's original three scored times for the perturbation median. ACA qualified reference is 89.648935 ms; the symmetric ≤3% interval is **86.95946695–92.33840305 ms**, using `abs(native_scored_median / 89.648935 - 1) <= 0.03`. CUPTI window times in the decoder are diagnostic coordinates. Build/ABI, exact, record-contract, and timing gates precede any next optimization investment. A failed gate terminates this diagnostic round and records its terminal state.
 
-Local checks cover source closure, fixed host callback protocol, late external mapping, both memcpy keys, interval codec/aggregation/dependencies, and payload size. GPU compilation, GPU exact, real CUPTI record completeness, and real timing perturbation belong to the single root native run.
+Local checks cover source closure, fixed host callback protocol, late external mapping, both memcpy keys, interval codec/aggregation/dependencies, and payload size. The actual native build, exactness and whole-call band passed. The real activity-information contract failed as recorded above.
