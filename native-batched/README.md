@@ -45,3 +45,7 @@ The platform has fixed the dialog and per-spec qualifying query. The original S1
 ## Completed shared-compute memory method
 
 The [single-compute/Point sharing method](gpu-workspace-method.md) passes native B1/B128 exact, with B128 **91.995788 ms** (one fresh scored seed), versus the fixed bulk baseline **89.033466 ms**. Its 5% throughput gate fails and official follow-up stops. Explicit device arrays decrease **65.566%**; target-reported GPU memory is **1323 MB**, process memory **9176.9 MB**, with **128 MiB L2**. [Complete native result](native-workspace-result.json). The source and its actual-helper ownership/deferred-DMA check remain at immutable tag `batch-shared-compute-candidate`. Production source and API metadata here retain the qualified S1 baseline.
+
+## Active-service information probe
+
+The [independent B128 CUPTI diagnostic](../diagnostics/b128-active/) keeps ACA arithmetic, four slots and the complete owned return. It separates one warm call from three fresh calls, with activity completeness and a symmetric 3% whole-call perturbation gate. The qualified ACA source remains pinned; this probe adds no challenge entry. Actual target build and trace results are recorded with the diagnostic when available.

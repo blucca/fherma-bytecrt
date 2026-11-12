@@ -1,0 +1,58 @@
+{
+  "passed": true,
+  "scope": "local source closure + CPU synthetic collector/codec/interval assertion",
+  "closure": "pass",
+  "synthetic": {
+    "status": "pass",
+    "scope": "synthetic CPU CUPTI callback/external mapping/codec/interval arithmetic",
+    "native_cuda_abi": "pending actual CUDA 12.8 image build",
+    "gpu_exact": "pending root native",
+    "fake_api_version": 999,
+    "calls": 4,
+    "kernels_per_call": 1280,
+    "h2d_per_call": 1024,
+    "d2h_per_call": 512,
+    "dropped": 0,
+    "stderr_bytes": 92498
+  },
+  "gpu_native": {
+    "cuda_12_8_build_and_abi": "pending root unique native",
+    "exact": "pending root unique native",
+    "perturbation_median_ms_threshold": 92.33840305,
+    "fresh_count": 3,
+    "warm_count": 1,
+    "formal_count": 0,
+    "perturbation_median_ms_min": 86.95946694999999,
+    "perturbation_median_ms_max": 92.33840305,
+    "perturbation_formula": "abs(native_scored_median/89.648935 - 1) <= .03"
+  },
+  "changes": {
+    "solve.cu": {
+      "added_lines": 21,
+      "removed_lines": 1
+    },
+    "CMakeLists.txt": {
+      "added_lines": 36,
+      "removed_lines": 2
+    }
+  },
+  "new_compiled_source_lines": {
+    "active-collector.cpp": 435,
+    "active-collector.hpp": 48
+  },
+  "build_sources": [
+    "main.cpp",
+    "solve.cu",
+    "active-collector.cpp",
+    "core/io-copy.cpp",
+    "core/vector-copy.cpp"
+  ],
+  "cupti_types": [
+    "CUpti_ActivityKernel9",
+    "CUpti_ActivityMemcpy5",
+    "CUpti_ActivityExternalCorrelation"
+  ],
+  "callback_protocol": "8 preallocated aligned 4MiB host buffers; request fixed slot; complete retains validSize/dropped/error counters; parse/aggregate/print only free",
+  "production_modified": false,
+  "edit_scope": "temp/round548/active-artifact"
+}

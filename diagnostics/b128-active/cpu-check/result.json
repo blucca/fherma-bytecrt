@@ -1,0 +1,13 @@
+{
+  "status": "pass",
+  "scope": "synthetic CPU CUPTI callback/external mapping/codec/interval arithmetic",
+  "native_cuda_abi": "pending actual CUDA 12.8 image build",
+  "gpu_exact": "pending root native",
+  "fake_api_version": 999,
+  "calls": 4,
+  "kernels_per_call": 1280,
+  "h2d_per_call": 1024,
+  "d2h_per_call": 512,
+  "dropped": 0,
+  "stderr_bytes": 92498
+}

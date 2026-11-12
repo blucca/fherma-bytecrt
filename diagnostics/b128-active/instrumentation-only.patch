@@ -1,0 +1,147 @@
+--- ACA/solve.cu
++++ active-artifact/solve.cu
+@@ -1,6 +1,7 @@
+ // SPDX-License-Identifier: Apache-2.0
+ #include <malloc.h>
+ #include <climits>
++#include "active-collector.hpp"
+ 
+ // Reuse the exact C18 kernels and preserve its B=1 coefficient-to-coefficient path.
+ #define BYTECRT_BATCHED
+@@ -22,6 +23,7 @@
+     std::array<std::unique_ptr<State>, kBatchSlots> slots{};
+     std::array<cudaStream_t, 3> streams{};
+     std::array<std::array<cudaEvent_t, 2>, 3> coverage{};
++    std::unique_ptr<bytecrt_active::Collector> collector;
+ 
+     ~BatchState() {
+         // Streaming States have zero stream pointers. They own only their
+@@ -35,6 +37,7 @@
+ 
+ struct BatchHostProfile {
+     double pack_us = 0, owned_us = 0;
++    bytecrt_active::Call* active = nullptr;
+ };
+ 
+ void retire_product_streams(State& s) {
+@@ -69,7 +72,10 @@
+     for (unsigned chunk = 0; chunk < chunks; ++chunk) {
+         const size_t offset = operand * coeffs + chunk * words;
+         const auto begin = profile ? Clock::now() : Clock::time_point{};
++        auto* pack = host.active ? &host.active->pack[host.active->packs++] : nullptr;
++        if (pack) pack->begin = bytecrt_active::host_ns();
+         bytecrt_pack_operand(s.hostinput + offset, source + chunk * words, words);
++        if (pack) pack->end = bytecrt_active::host_ns();
+         if (profile)
+             host.pack_us += std::chrono::duration<double, std::micro>(Clock::now() - begin).count();
+         if (product == 0 && operand == 0 && chunk == 0)
+@@ -144,10 +150,14 @@
+     const unsigned chunks = s.plan.n / kOutputCoefficients;
+     const size_t words = size_t(kOutputCoefficients) * s.plan.l;
+     for (unsigned chunk = 0; chunk < chunks; ++chunk) {
++        auto* drain = host.active ? &host.active->drain[host.active->drains++] : nullptr;
++        if (drain) drain->begin = bytecrt_active::host_ns();
+         check(cudaEventSynchronize(s.copied[chunk]), "batch wait copied chunk");
++        if (drain) drain->waited = bytecrt_active::host_ns();
+         const auto begin_time = profile ? Clock::now() : Clock::time_point{};
+         const uint32_t* begin = s.hostout + chunk * words;
+         output.insert(output.end(), begin, begin + words);
++        if (drain) drain->owned = bytecrt_active::host_ns();
+         if (profile)
+             host.owned_us += std::chrono::duration<double, std::micro>(Clock::now() - begin_time).count();
+     }
+@@ -194,6 +204,8 @@
+             "ByteCRT batch setup B=%u slots=%u resource-streams=3 async-engines=%d fixed-tables=replicated\n",
+             p.B, batch->slot_count, props.asyncEngineCount);
+     }
++    // Fixed arrays and CUPTI callbacks are set up after all original GPU initialization.
++    if (p.B == 128) batch->collector = std::make_unique<bytecrt_active::Collector>();
+     return batch.release();
+ }
+ 
+@@ -201,6 +213,7 @@
+     auto& batch = *static_cast<BatchState*>(state);
+     if (batch.batch == 1)
+         return bytecrt_serial_run(batch.slots[0].get(), in);
++    bytecrt_active::CallScope active_call(batch.collector.get());
+     const auto& plan = batch.slots[0]->plan;
+     const size_t words = size_t(plan.n) * plan.l;
+     const size_t total = words * batch.batch;
+@@ -209,9 +222,12 @@
+     const bool profile = batch.calls++ == 0;  // one unscored warmup
+     const auto begin = profile ? Clock::now() : Clock::time_point{};
+     BatchHostProfile host;
++    host.active = active_call.record();
+     fherma::Outputs out;
+     out.c.shape = {int64_t(batch.batch), int64_t(plan.n), int64_t(plan.l)};
++    if (host.active) host.active->reserve.begin = bytecrt_active::host_ns();
+     out.c.data.reserve(total);
++    if (host.active) host.active->reserve.end = bytecrt_active::host_ns();
+     for (unsigned product = 0; product < batch.batch; ++product) {
+         auto& slot = *batch.slots[product % batch.slot_count];
+         if (product >= batch.slot_count)
+@@ -243,4 +259,8 @@
+     return out;
+ }
+ 
+-void fherma_free(void* state) { delete static_cast<BatchState*>(state); }
++void fherma_free(void* state) {
++    auto* batch = static_cast<BatchState*>(state);
++    if (batch->collector) batch->collector->finish();
++    delete batch;
++}
+--- ACA/CMakeLists.txt
++++ active-artifact/CMakeLists.txt
+@@ -34,11 +34,44 @@
+ 
+ find_package(OpenMP REQUIRED COMPONENTS CXX)
+ 
+-add_executable(solution main.cpp solve.cu core/io-copy.cpp core/vector-copy.cpp)
++# This diagnostic has one build gate: the existing CUDA 12.8 challenge image.
++if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.8 OR
++   NOT CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.9)
++  message(FATAL_ERROR "B128 active diagnostic requires the CUDA 12.8 challenge image")
++endif()
++find_path(FHERMA_CUPTI_INCLUDE_DIR cupti.h PATHS
++  /usr/local/cuda-12.8/extras/CUPTI/include /usr/local/cuda/extras/CUPTI/include
++  /usr/local/cuda-12.8/include /usr/local/cuda/include NO_DEFAULT_PATH)
++find_library(FHERMA_CUPTI_LIBRARY NAMES cupti PATHS
++  /usr/local/cuda-12.8/extras/CUPTI/lib64 /usr/local/cuda/extras/CUPTI/lib64
++  /usr/local/cuda-12.8/targets/x86_64-linux/lib /usr/local/cuda/targets/x86_64-linux/lib
++  /usr/local/cuda-12.8/lib64 /usr/local/cuda/lib64 NO_DEFAULT_PATH)
++if(NOT FHERMA_CUPTI_INCLUDE_DIR OR NOT FHERMA_CUPTI_LIBRARY)
++  message(FATAL_ERROR "CUDA 12.8 CUPTI headers/library missing; stop active diagnostic")
++endif()
++include(CheckCXXSourceCompiles)
++set(CMAKE_REQUIRED_INCLUDES ${FHERMA_CUPTI_INCLUDE_DIR} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
++check_cxx_source_compiles("
++#include <cupti.h>
++static_assert(CUDA_VERSION == 12080, \"CUDA 12.8 headers required\");
++int main() {
++  CUpti_ActivityKernel9 k{}; CUpti_ActivityMemcpy5 m{};
++  CUpti_ActivityExternalCorrelation e{};
++  return int(k.correlationId + m.runtimeCorrelationId + e.externalId + CUPTI_API_VERSION);
++}" FHERMA_CUPTI_RECORD_ABI)
++unset(CMAKE_REQUIRED_INCLUDES)
++if(NOT FHERMA_CUPTI_RECORD_ABI)
++  message(FATAL_ERROR "CUDA 12.8 CUPTI Kernel9/Memcpy5/external-correlation ABI failed; stop")
++endif()
++message(STATUS "B128 active CUPTI: ${FHERMA_CUPTI_INCLUDE_DIR}; ${FHERMA_CUPTI_LIBRARY}")
++
++add_executable(solution main.cpp solve.cu active-collector.cpp core/io-copy.cpp core/vector-copy.cpp)
+ 
+ target_include_directories(solution PRIVATE
+   ${CMAKE_CURRENT_SOURCE_DIR}
+   ${CMAKE_CURRENT_SOURCE_DIR}/core
++  ${FHERMA_CUPTI_INCLUDE_DIR}
++  ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+   ${CUPQC_SDK_DIR}/include
+   ${CUPQC_SDK_DIR}/include/cupqc)
+ 
+@@ -58,4 +91,5 @@
+ 
+ target_link_libraries(solution PRIVATE
+   ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a
+-  OpenMP::OpenMP_CXX)
++  OpenMP::OpenMP_CXX
++  ${FHERMA_CUPTI_LIBRARY})

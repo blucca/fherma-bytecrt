@@ -1,0 +1,95 @@
+# Builds the cuPQC answer inside the challenge image (fherma/cupqc), which
+# provides CUDA 12.8 and the cuPQC SDK. Unlike the default generated C++
+# CMakeLists, this one enables CUDA and links the cuPQC staged NTT arithmetic.
+cmake_minimum_required(VERSION 3.24)
+project(fherma_solution LANGUAGES CXX CUDA)
+
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_CUDA_STANDARD 17)
+set(CMAKE_CUDA_STANDARD_REQUIRED ON)
+
+# Release unless told otherwise: an answer measured at -O0 is not a measurement
+# of the answer.
+if(NOT CMAKE_BUILD_TYPE)
+  set(CMAKE_BUILD_TYPE Release)
+endif()
+
+# The GPU architecture to build for: the card the build can see. The platform
+# builds a solution on the machine that measures it, with the GPU visible, so
+# `native` compiles for an L40S (sm_89) there and for an RTX PRO 6000
+# (sm_120) here — where a fixed sm_89 with device LTO shipped no PTX and had
+# no kernel to run. Override with -DFHERMA_CUDA_ARCH=sm_89 to build for a card
+# that is not present. CMake's own CMAKE_CUDA_ARCHITECTURES is left OFF because
+# it emits -gencode, which nvcc refuses alongside -dlto; the architecture is
+# passed as -arch= instead.
+set(FHERMA_CUDA_ARCH native CACHE STRING "nvcc -arch value")
+
+# CUPQC_SDK_DIR is set by the image; fall back to the default install location.
+if(DEFINED ENV{CUPQC_SDK_DIR})
+  set(CUPQC_SDK_DIR $ENV{CUPQC_SDK_DIR})
+else()
+  set(CUPQC_SDK_DIR /usr/local/cupqc-sdk)
+endif()
+
+find_package(OpenMP REQUIRED COMPONENTS CXX)
+
+# This diagnostic has one build gate: the existing CUDA 12.8 challenge image.
+if(CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.8 OR
+   NOT CMAKE_CUDA_COMPILER_VERSION VERSION_LESS 12.9)
+  message(FATAL_ERROR "B128 active diagnostic requires the CUDA 12.8 challenge image")
+endif()
+find_path(FHERMA_CUPTI_INCLUDE_DIR cupti.h PATHS
+  /usr/local/cuda-12.8/extras/CUPTI/include /usr/local/cuda/extras/CUPTI/include
+  /usr/local/cuda-12.8/include /usr/local/cuda/include NO_DEFAULT_PATH)
+find_library(FHERMA_CUPTI_LIBRARY NAMES cupti PATHS
+  /usr/local/cuda-12.8/extras/CUPTI/lib64 /usr/local/cuda/extras/CUPTI/lib64
+  /usr/local/cuda-12.8/targets/x86_64-linux/lib /usr/local/cuda/targets/x86_64-linux/lib
+  /usr/local/cuda-12.8/lib64 /usr/local/cuda/lib64 NO_DEFAULT_PATH)
+if(NOT FHERMA_CUPTI_INCLUDE_DIR OR NOT FHERMA_CUPTI_LIBRARY)
+  message(FATAL_ERROR "CUDA 12.8 CUPTI headers/library missing; stop active diagnostic")
+endif()
+include(CheckCXXSourceCompiles)
+set(CMAKE_REQUIRED_INCLUDES ${FHERMA_CUPTI_INCLUDE_DIR} ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES})
+check_cxx_source_compiles("
+#include <cupti.h>
+static_assert(CUDA_VERSION == 12080, \"CUDA 12.8 headers required\");
+int main() {
+  CUpti_ActivityKernel9 k{}; CUpti_ActivityMemcpy5 m{};
+  CUpti_ActivityExternalCorrelation e{};
+  return int(k.correlationId + m.runtimeCorrelationId + e.externalId + CUPTI_API_VERSION);
+}" FHERMA_CUPTI_RECORD_ABI)
+unset(CMAKE_REQUIRED_INCLUDES)
+if(NOT FHERMA_CUPTI_RECORD_ABI)
+  message(FATAL_ERROR "CUDA 12.8 CUPTI Kernel9/Memcpy5/external-correlation ABI failed; stop")
+endif()
+message(STATUS "B128 active CUPTI: ${FHERMA_CUPTI_INCLUDE_DIR}; ${FHERMA_CUPTI_LIBRARY}")
+
+add_executable(solution main.cpp solve.cu active-collector.cpp core/io-copy.cpp core/vector-copy.cpp)
+
+target_include_directories(solution PRIVATE
+  ${CMAKE_CURRENT_SOURCE_DIR}
+  ${CMAKE_CURRENT_SOURCE_DIR}/core
+  ${FHERMA_CUPTI_INCLUDE_DIR}
+  ${CMAKE_CUDA_TOOLKIT_INCLUDE_DIRECTORIES}
+  ${CUPQC_SDK_DIR}/include
+  ${CUPQC_SDK_DIR}/include/cupqc)
+
+# The cuPQC NTT implementation ships as device-LTO objects, so the device
+# code is compiled and device-linked with -dlto, and the static library is put
+# on the device link line. -arch=<sm> replaces CMAKE_CUDA_ARCHITECTURES, whose
+# -gencode form conflicts with -dlto.
+set_target_properties(solution PROPERTIES
+  CUDA_ARCHITECTURES OFF
+  CUDA_SEPARABLE_COMPILATION ON)
+target_compile_options(solution PRIVATE
+  $<$<COMPILE_LANGUAGE:CUDA>:-arch=${FHERMA_CUDA_ARCH};-dlto>)
+target_link_options(solution PRIVATE
+  $<DEVICE_LINK:-arch=${FHERMA_CUDA_ARCH};-dlto>
+  "$<HOST_LINK:LINKER:--wrap=memcpy>"
+  "$<HOST_LINK:LINKER:--wrap=memmove>")
+
+target_link_libraries(solution PRIVATE
+  ${CUPQC_SDK_DIR}/lib/libcupqc-ntt.a
+  OpenMP::OpenMP_CXX
+  ${FHERMA_CUPTI_LIBRARY})
