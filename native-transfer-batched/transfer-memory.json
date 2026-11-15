@@ -1,0 +1,45 @@
+{
+  "scope": "explicit array accounting; context/driver/events/allocator overhead and harness transients measured by fresh native",
+  "baseline": "aca09d65fe30e6c9497f7a0f038e9a9f4b7384df",
+  "main_rows": [
+    {
+      "B": 1,
+      "N": 65536,
+      "L": 55,
+      "slots": 1,
+      "raw_device_A_B_C_bytes": 43253760,
+      "legacy_device_arrays_bytes": 343882396,
+      "explicit_device_bytes": 387136156,
+      "pinned_host_bytes": 43253760,
+      "host_inputs_A_B_and_owned_C_bytes": 43253760,
+      "explicit_host_bytes": 86507520,
+      "combined_explicit_device_host_bytes": 473643676
+    },
+    {
+      "B": 2,
+      "N": 65536,
+      "L": 55,
+      "slots": 2,
+      "raw_device_A_B_C_bytes": 86507520,
+      "legacy_device_arrays_bytes": 687764792,
+      "explicit_device_bytes": 774272312,
+      "pinned_host_bytes": 86507520,
+      "host_inputs_A_B_and_owned_C_bytes": 86507520,
+      "explicit_host_bytes": 173015040,
+      "combined_explicit_device_host_bytes": 947287352
+    },
+    {
+      "B": 128,
+      "N": 65536,
+      "L": 55,
+      "slots": 4,
+      "raw_device_A_B_C_bytes": 5536481280,
+      "legacy_device_arrays_bytes": 1375529584,
+      "explicit_device_bytes": 6912010864,
+      "pinned_host_bytes": 173015040,
+      "host_inputs_A_B_and_owned_C_bytes": 5536481280,
+      "explicit_host_bytes": 5709496320,
+      "combined_explicit_device_host_bytes": 12621507184
+    }
+  ]
+}

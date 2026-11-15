@@ -1,0 +1,104 @@
+{
+  "status": "pass",
+  "scope": "small lifted actual-wrapper host method proof; mathematical kernels are mocked",
+  "source_sha256": "00d25a6a19d91ba54702f84c626ad7199293b71cda2f18ff2c0cffcc62b7a011",
+  "generated_header_sha256": "38c124c55f42a889964db2277eae423e656ac40915502b4a718269a3f444b5df",
+  "rewritten_cuda_launch_sites": 3,
+  "reduced_dimension_dispatch_predicates": 1,
+  "production_ranges": [
+    {
+      "shape": [
+        1,
+        65536,
+        55
+      ],
+      "pair_words": 3604480,
+      "operand_bytes": 14417920,
+      "first_product_word_range": [
+        0,
+        3604480
+      ],
+      "last_product_word_range": [
+        0,
+        3604480
+      ]
+    },
+    {
+      "shape": [
+        2,
+        65536,
+        55
+      ],
+      "pair_words": 3604480,
+      "operand_bytes": 28835840,
+      "first_product_word_range": [
+        0,
+        3604480
+      ],
+      "last_product_word_range": [
+        3604480,
+        7208960
+      ]
+    },
+    {
+      "shape": [
+        128,
+        65536,
+        55
+      ],
+      "pair_words": 3604480,
+      "operand_bytes": 1845493760,
+      "first_product_word_range": [
+        0,
+        3604480
+      ],
+      "last_product_word_range": [
+        457768960,
+        461373440
+      ]
+    },
+    {
+      "shape": [
+        1,
+        32768,
+        28
+      ],
+      "pair_words": 917504,
+      "operand_bytes": 3670016,
+      "first_product_word_range": [
+        0,
+        917504
+      ],
+      "last_product_word_range": [
+        0,
+        917504
+      ]
+    }
+  ],
+  "frozen_core_sha256": {
+    "g1-crt.cuh": "d932c1efe89467d4d5ad37a3d8f5220f21da8ee4e6dd5b862915fdf98d974b12",
+    "io-copy.cpp": "13fd9a1109f0c1b25a55bb89db52c6bf35ae22d06e399dbb34ad4f9715f5fe1a",
+    "ntt-pipeline.cuh": "af383f13c4743e0bcbdf18f78fef94fde938c3588cc36146ae150faf04fae4eb",
+    "ntt-weighted.cuh": "7ce451b0c8f8f9eea86fd24dc34665efb7f70b34cb355f8be43349bea280186b",
+    "rns-encode-mma.cuh": "6f0f9d007986da5b9caa4732500d203addebf82b7f698a98cc94322891397bcb",
+    "rns-encode.cuh": "a9be3a744d93d0de151bcdbbefb6de86992af30316d4682ef1bf3760c2eb63db",
+    "rns-plan.hpp": "fe8d662cd8791933fac88c5332b51f406f7eb95a2384df9e18f4273b41325f17",
+    "solve.cu": "ac5d45ba5f7a201dfa2f03cd6cee25bb59670d5334c7df9d1808fa76f47d1a3f",
+    "vector-copy.cpp": "08f116685bd4142472dad3eebff0330b52fb20756941422dbf2b8a81fe239801"
+  },
+  "checks": [
+    "B1/B2/B128 row-major shape and pair ranges",
+    "B1 auxiliary dispatch N32768/P57/Kpad256",
+    "deferred DMA and pinned staging reuse fences",
+    "exact original A/B byte preservation",
+    "G1 direct raw-C product ordering",
+    "run returns with all mock device work complete",
+    "two consecutive calls with retained independent owned outputs after free",
+    "h2d/d2h zero mathematical launches and zero device allocations",
+    "run reserve-only empty result, no bulk host zero-fill or byte copies",
+    "exact C++ callback function types",
+    "all core files frozen ACA byte-identical"
+  ],
+  "stdout": "PASS B=1 dispatch-N=65536: byte copies, direct product ranges, completed run and independent outputs across two calls\nPASS B=2 dispatch-N=65536: byte copies, direct product ranges, completed run and independent outputs across two calls\nPASS B=128 dispatch-N=65536: byte copies, direct product ranges, completed run and independent outputs across two calls\nPASS B=1 dispatch-N=32768: byte copies, direct product ranges, completed run and independent outputs across two calls\n",
+  "real_cuda_measurements": 0
+}
