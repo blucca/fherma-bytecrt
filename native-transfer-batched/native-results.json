@@ -1,0 +1,36 @@
+{
+  "scope": "Official target native benchmark: one fresh seed per point; same frozen ACA mathematical kernels.",
+  "source_commit": "b22fd36a46db78b37cbe07bd348726ecf78b8a88",
+  "natively_verified": true,
+  "passed": 2,
+  "cases": 2,
+  "points": [
+    {
+      "point": "B1-N65536-W1747",
+      "freshSeeds": 1,
+      "passed": 1,
+      "run_ms": 0.691626,
+      "h2d_ms": 0.860742,
+      "d2h_ms": 0.308708,
+      "process_memory_mb": 159.3,
+      "gpu_memory_mb": 899
+    },
+    {
+      "point": "B128-N65536-W1747",
+      "freshSeeds": 1,
+      "passed": 1,
+      "run_ms": 86.236234,
+      "h2d_ms": 69.50957600000001,
+      "d2h_ms": 32.760206,
+      "process_memory_mb": 9177.1,
+      "gpu_memory_mb": 7195
+    }
+  ],
+  "comparison": {
+    "board_top_ms": 25.955289,
+    "native_gate_ms": 26.733947670000003,
+    "gate": "failed",
+    "formal_submission_count": 0,
+    "decision": "stop this callback port; retain the previously qualified ACA entry"
+  }
+}

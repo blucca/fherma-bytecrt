@@ -13,9 +13,11 @@ At B128, the raw A/B/C device buffers add **5,536,481,280 B**. With the retained
 
 ## Validation and timing scope
 
-The [small lifted host method proof](host-transfer-method.md) passes B1/B2/B128 and auxiliary B1 dispatch, deferred staging reuse, original bytes, raw product order, complete run synchronization and two-call independent output ownership. Mathematical exactness and performance use the root-owned fresh native run.
+The [small lifted host method proof](host-transfer-method.md) passes B1/B2/B128 and auxiliary B1 dispatch, deferred staging reuse, original bytes, raw product order, complete run synchronization and two-call independent output ownership. The official target has now verified both B1 and B128 at one fresh seed each; results are in [native-results.json](native-results.json).
 
-This source checkpoint has **0 new CUDA measurements** and no new ranked score. The prior ACA 89.648935 ms is a no-hook whole-call measurement; the updated challenge ranks only `run`. New results will report `h2d_s` and `d2h_s` beside the completed device run time.
+The official native snapshot is **2/2 exact**, with both transfer stages reported separately. At B128, `run` is **86.236234 ms**, H2D **69.509576 ms**, and D2H **32.760206 ms**; process memory is 9177.1 MB and device memory 7195 MB. B1 run/H2D/D2H are 0.691626/0.860742/0.308708 ms.
+
+The current comparison was 25.955289 ms (three measured seeds); this method's 26.73394767 ms performance gate **failed**. This callback port stops here, with zero new formal submissions. The qualified ACA 89.648935 ms three-seed record remains the retained entry. These one-seed native measurements establish this implementation's complete `fherma_run` time with pure transfer stages isolated; they do not include the transfers in `run`.
 
 ## Build
 
