@@ -47,3 +47,9 @@ struct Outputs {
 void* fherma_init(const fherma::Point& p);
 fherma::Outputs fherma_run(void* state, const fherma::Inputs& in);
 void fherma_free(void* state);
+
+// Optional, for an answer that keeps its data on a device: host to device
+// before fherma_run, device to host after it. Each is clocked on its own and
+// neither is the score; left out, neither is called.
+void fherma_h2d(void* state, const fherma::Inputs& in);
+fherma::Outputs fherma_d2h(void* state, fherma::Outputs answer);

@@ -384,6 +384,14 @@ run_body = uncomment(function('fherma_run'))
 assert 'out.c.data.reserve(batch.total)' in run_body
 assert not re.search(r'cudaMemcpy|cudaMemset|\.resize\(|\.insert\(|bytecrt_pack_operand|\.data\(\)', run_body)
 
+header_raw = (artifact / 'fherma.h').read_text()
+main_raw = (artifact / 'main.cpp').read_text()
+assert 'void fherma_h2d(void* state, const fherma::Inputs& in);' in header_raw
+assert 'fherma::Outputs fherma_d2h(void* state, fherma::Outputs answer);' in header_raw
+assert main_raw.index('fherma_h2d(state, in)') < main_raw.index('answer = fherma_run(state, in)') < main_raw.index('answer = fherma_d2h(state, std::move(answer))')
+assert 'clocked("h2d_s", mark)' in main_raw and 'clocked("d2h_s", mark)' in main_raw
+assert 'seconds = took.count();' in main_raw and 'with(ok(i, seconds), moved)' in main_raw
+
 frozen = 'aca09d65fe30e6c9497f7a0f038e9a9f4b7384df'
 core_hashes = {}
 for path in sorted((artifact / 'core').iterdir()):
@@ -403,6 +411,7 @@ for B, N, L in [(1, 65536, 55), (2, 65536, 55), (128, 65536, 55), (1, 32768, 28)
 result = {'status': 'pass', 'scope': 'small lifted actual-wrapper host method proof; mathematical kernels are mocked',
           'source_sha256': hashlib.sha256(source.read_bytes()).hexdigest(),
           'generated_header_sha256': hashlib.sha256((artifact / 'fherma.h').read_bytes()).hexdigest(),
+          'generated_main_sha256': hashlib.sha256((artifact / 'main.cpp').read_bytes()).hexdigest(),
           'rewritten_cuda_launch_sites': launch_count, 'reduced_dimension_dispatch_predicates': 1,
           'production_ranges': ranges, 'frozen_core_sha256': core_hashes,
           'checks': ['B1/B2/B128 row-major shape and pair ranges', 'B1 auxiliary dispatch N32768/P57/Kpad256',
@@ -411,7 +420,8 @@ result = {'status': 'pass', 'scope': 'small lifted actual-wrapper host method pr
                      'two consecutive calls with retained independent owned outputs after free',
                      'h2d/d2h zero mathematical launches and zero device allocations',
                      'run reserve-only empty result, no bulk host zero-fill or byte copies',
-                     'exact C++ callback function types', 'all core files frozen ACA byte-identical'],
+                     'exact C++ callback function types', 'canonical header/main exact hooks, move ownership and timer fields',
+                     'all core files frozen ACA byte-identical'],
           'stdout': run.stdout, 'real_cuda_measurements': 0}
 (root / 'result.json').write_text(json.dumps(result, indent=2) + '\n')
 print(run.stdout, end='')

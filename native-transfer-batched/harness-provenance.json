@@ -1,0 +1,68 @@
+{
+  "generator": "fherma-lang",
+  "version": "0.20.0",
+  "python": "3.12.3 (main, Aug 31 2026, 10:18:26) [GCC 13.3.0]",
+  "official_install_doc": "https://fherma.io/docs/cli-install",
+  "official_language_doc": "https://fherma.io/docs/fherma-lang",
+  "metadata_url": "https://pypi.org/pypi/fherma-lang/json",
+  "wheel": {
+    "filename": "fherma_lang-0.20.0-py3-none-any.whl",
+    "url": "https://files.pythonhosted.org/packages/89/bc/8f18582011c8a2cbb0e73892d1ed3a3ab70cad6f375c13313f41553f1ba9/fherma_lang-0.20.0-py3-none-any.whl",
+    "bytes": 135504,
+    "sha256": "706a36639c81a509522c2a2d9865d268e374be31176284fb527531e231d6fd9b",
+    "upload_time_iso_8601": "2026-11-13T10:33:44.158985Z"
+  },
+  "requires_runtime_dependencies": [],
+  "published_spec": {
+    "id": "6af440361874ee4592df65f5",
+    "slug": "negacyclic-batched",
+    "version": "1.0.0",
+    "kernel": "polynomial-multiplication",
+    "signature_sha256": "636ea998c3674e1cde813d008d1fa8ecdb28bdf0c569d456dea300bb0786e08d",
+    "bytes": 2209
+  },
+  "command": [
+    "python3",
+    "-B",
+    "-m",
+    "fherma_lang",
+    "emit",
+    "--solution",
+    "/workspace/gain/temp/round603/fherma-harness-recovery/negacyclic-batched.fhk",
+    "--lang",
+    "cpp",
+    "--cuda",
+    "--out",
+    "/workspace/gain/temp/round603/fherma-harness-recovery/generated",
+    "--json"
+  ],
+  "exit": 0,
+  "generated": {
+    "fherma.h": {
+      "bytes": 1572,
+      "sha256": "e1db86cb305289724f9c0789708f50034e55eb57ef528852ad2d04ddf3727f6a"
+    },
+    "main.cpp": {
+      "bytes": 9911,
+      "sha256": "a73d8b30557d5f2d0c234c489b859dbb7dc9ec988ff6af99ecbc8de2f76931a1"
+    },
+    "solve.cu": {
+      "bytes": 1408,
+      "sha256": "b95e3f0f47ce2a55fc2e7377c65a9e5529a0f98faa54830dad6a134481a49913"
+    },
+    "CMakeLists.txt": {
+      "bytes": 2176,
+      "sha256": "687419d2a0a4afe0eea8cf20681e1ed4f9ca0dc805b67952f6aa61573f2534e4"
+    },
+    "README.md": {
+      "bytes": 974,
+      "sha256": "270e7b7ad8eb6bf82edfb6506a4b1aa64f081ff2941766c842a69fb110174b56"
+    },
+    "fherma.toml": {
+      "bytes": 606,
+      "sha256": "0aed9eecc8858169d8a5be6fa2cd84641c6b44511f514f41ca7aa77a2e537da2"
+    }
+  },
+  "unmodified_official_emitter": true,
+  "scope": "official published 0.20.0 h2d/d2h; no metrics added; authored callbacks explicitly synchronize device operations"
+}

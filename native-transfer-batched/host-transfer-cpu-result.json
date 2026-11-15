@@ -2,7 +2,8 @@
   "status": "pass",
   "scope": "small lifted actual-wrapper host method proof; mathematical kernels are mocked",
   "source_sha256": "00d25a6a19d91ba54702f84c626ad7199293b71cda2f18ff2c0cffcc62b7a011",
-  "generated_header_sha256": "38c124c55f42a889964db2277eae423e656ac40915502b4a718269a3f444b5df",
+  "generated_header_sha256": "e1db86cb305289724f9c0789708f50034e55eb57ef528852ad2d04ddf3727f6a",
+  "generated_main_sha256": "a73d8b30557d5f2d0c234c489b859dbb7dc9ec988ff6af99ecbc8de2f76931a1",
   "rewritten_cuda_launch_sites": 3,
   "reduced_dimension_dispatch_predicates": 1,
   "production_ranges": [
@@ -97,6 +98,7 @@
     "h2d/d2h zero mathematical launches and zero device allocations",
     "run reserve-only empty result, no bulk host zero-fill or byte copies",
     "exact C++ callback function types",
+    "canonical header/main exact hooks, move ownership and timer fields",
     "all core files frozen ACA byte-identical"
   ],
   "stdout": "PASS B=1 dispatch-N=65536: byte copies, direct product ranges, completed run and independent outputs across two calls\nPASS B=2 dispatch-N=65536: byte copies, direct product ranges, completed run and independent outputs across two calls\nPASS B=128 dispatch-N=65536: byte copies, direct product ranges, completed run and independent outputs across two calls\nPASS B=1 dispatch-N=32768: byte copies, direct product ranges, completed run and independent outputs across two calls\n",

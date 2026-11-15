@@ -12,7 +12,8 @@
 //
 // Only the call to fherma_run is timed. Reading and writing are outside the
 // window, which is also why seeing the inputs early is not a way to answer
-// early: nothing of yours runs during the read.
+// early: nothing of yours runs during the read. fherma_h2d and fherma_d2h,
+// where the answer has them, are clocked apart.
 #include "fherma.h"
 
 #include <chrono>
@@ -26,7 +27,33 @@
 
 namespace fs = std::filesystem;
 
+// FHERMA_DEVICE_BEGIN
+// What runs when the answer leaves fherma_h2d or fherma_d2h out: each says it
+// is absent, so the loop neither clocks nor reports a transfer that did not
+// happen. The answer's own, defined anywhere in it, replaces them when linked.
+namespace fherma_device { bool h2d = true, d2h = true; }
+__attribute__((weak)) void fherma_h2d(void*, const fherma::Inputs&) { fherma_device::h2d = false; }
+__attribute__((weak)) fherma::Outputs fherma_d2h(void*, fherma::Outputs answer) {
+    fherma_device::d2h = false;
+    return answer;
+}
+// FHERMA_DEVICE_END
+
 namespace {
+
+// `,"name":seconds` since a mark, for the fields a case row may carry.
+std::string clocked(const char* name, std::chrono::steady_clock::time_point mark) {
+    std::ostringstream out;
+    out << std::fixed << std::setprecision(9) << ",\"" << name << "\":"
+        << std::chrono::duration<double>(std::chrono::steady_clock::now() - mark).count();
+    return out.str();
+}
+
+// A case row with more fields, put before its closing brace.
+std::string with(std::string row, const std::string& more) {
+    row.insert(row.size() - 1, more);
+    return row;
+}
 
 std::string slurp(const fs::path& at) {
     std::ifstream file(at, std::ios::binary);
@@ -178,6 +205,18 @@ int main(int argc, char** argv) {
 
         double seconds = 0;
         fherma::Outputs answer{};
+        std::string moved;
+        // FHERMA_H2D_BEGIN
+        try {
+            const auto mark = std::chrono::steady_clock::now();
+            fherma_h2d(state, in);
+            if (fherma_device::h2d) moved += clocked("h2d_s", mark);
+        } catch (const std::exception& failure) {
+            cases.push_back(crashed(i, std::string("fherma_h2d: ") + failure.what()));
+            report(answers_root, init_took.count(), cases);
+            continue;
+        }
+        // FHERMA_H2D_END
         try {
             // Monotonic, and around the call and nothing else.
             const auto started = std::chrono::steady_clock::now();
@@ -190,6 +229,17 @@ int main(int argc, char** argv) {
             report(answers_root, init_took.count(), cases);
             continue;
         }
+        // FHERMA_D2H_BEGIN
+        try {
+            const auto mark = std::chrono::steady_clock::now();
+            answer = fherma_d2h(state, std::move(answer));
+            if (fherma_device::d2h) moved += clocked("d2h_s", mark);
+        } catch (const std::exception& failure) {
+            cases.push_back(crashed(i, std::string("fherma_d2h: ") + failure.what()));
+            report(answers_root, init_took.count(), cases);
+            continue;
+        }
+        // FHERMA_D2H_END
 
         try {
             fs::create_directories(answers);
@@ -200,7 +250,7 @@ int main(int argc, char** argv) {
             continue;
         }
 
-        cases.push_back(ok(i, seconds));
+        cases.push_back(with(ok(i, seconds), moved));
         report(answers_root, init_took.count(), cases);
     }
 

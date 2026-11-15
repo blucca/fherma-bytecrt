@@ -19,4 +19,4 @@ This source checkpoint has **0 new CUDA measurements** and no new ranked score. 
 
 ## Build
 
-Use the official `fherma/cupqc` image (cuPQC 0.6.0/CUDA 12.8), from this directory. `CMakeLists.txt` retains the qualified ACA build and local core sources. The platform regenerates `fherma.h` and `main.cpp` before each fresh commit measurement. Canonical transfer-aware generated files from fherma-lang >=0.20 are pending local replacement at this checkpoint; the currently copied legacy files supply type definitions for the host proof.
+Use the official `fherma/cupqc` image (cuPQC 0.6.0/CUDA 12.8), from this directory. `CMakeLists.txt` retains the qualified ACA build and local core sources. The platform regenerates `fherma.h` and `main.cpp` before each fresh commit measurement. The checked-in `fherma.h` and `main.cpp` are unmodified official fherma-lang **0.20.0** output for the published signature. They declare and call the exact hooks, move the reserved answer into d2h, and report `h2d_s`/`d2h_s` separately from `seconds`. All three authored phases complete their device work explicitly. Generator provenance and file hashes are in `harness-provenance.json`.
