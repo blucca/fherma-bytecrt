@@ -22,3 +22,7 @@ The current comparison was 25.955289 ms (three measured seeds); this method's 26
 ## Build
 
 Use the official `fherma/cupqc` image (cuPQC 0.6.0/CUDA 12.8), from this directory. `CMakeLists.txt` retains the qualified ACA build and local core sources. The platform regenerates `fherma.h` and `main.cpp` before each fresh commit measurement. The checked-in `fherma.h` and `main.cpp` are unmodified official fherma-lang **0.20.0** output for the published signature. They declare and call the exact hooks, move the reserved answer into d2h, and report `h2d_s`/`d2h_s` separately from `seconds`. All three authored phases complete their device work explicitly. Generator provenance and file hashes are in `harness-provenance.json`.
+
+## Porting notes
+
+[Batch dispatch, tensor-NTT comparison scopes and a 65-bit radix-16 dot](method-notes.md) records the source-derived prerequisites for a future complete arithmetic port, with a small independently runnable integer example.
